@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "savecmg"
+version = "0.1.0"
+description = ""
+authors = ["SlowWave <chrs.borgia@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = "^1.26.4"
+plotly = "^5.22.0"
+scipy = "^1.13.1"
+gymnasium = "^0.29.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
