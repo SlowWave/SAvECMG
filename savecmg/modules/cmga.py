@@ -9,7 +9,7 @@ class ControlMomentGyroAssembly:
 
     def get_jacobian(self, theta):
 
-        jacobian_elements = []  
+        jacobian_elements = []
 
         if self.cmg_array[0]:
             jacobian_elements.append(
@@ -52,15 +52,15 @@ class ControlMomentGyroAssembly:
                 )
             )
 
-        jacobian = np.array(jacobian_elements)
+        jacobian = np.transpose(jacobian_elements)
 
         return jacobian
 
     def get_angular_momentum(self, theta, cmgs_momenta):
 
-        
-        del(cmgs_momenta[np.where(np.array(np.array(self.cmg_array)) == False)[0]])
-        cmgs_momenta = np.array(cmgs_momenta)
+        cmgs_momenta = np.delete(
+            cmgs_momenta, np.where(np.array(self.cmg_array) == False)[0]
+        )
 
         angular_momentum_elements = []
 
@@ -105,7 +105,7 @@ class ControlMomentGyroAssembly:
                 )
             )
 
-        angular_momentum = np.dot(np.array(angular_momentum_elements), cmgs_momenta)
+        angular_momentum = np.dot(np.transpose(angular_momentum_elements), cmgs_momenta)
 
         return angular_momentum
 
@@ -114,9 +114,9 @@ class ControlMomentGyroAssembly:
 
 
 if __name__ == "__main__":
-    
+
     cmga = ControlMomentGyroAssembly()
-    
+
     print(cmga.get_jacobian(np.array([0, 0, 0, 0])))
-    
+
     print(cmga.get_angular_momentum(np.array([0, 0, 0, 0]), [10000, 1, 1, 1]))
