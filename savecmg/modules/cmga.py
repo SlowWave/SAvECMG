@@ -7,6 +7,24 @@ class ControlMomentGyroAssembly:
         self.beta = np.array([0.0, 0.0, 0.0, 0.0])
         self.cmg_array = [True, True, True, True]
 
+    def propagate_states(self, cmgs_velocities_reference):
+        
+        # TODO: set cmgs_velocities_reference for each cmg object
+        
+        # TODO: propagate cmgs object states -> cmgs_velocities, cmgs_positions
+        
+        # TODO: compute jacobian, angular_momentum and torque in S/C reference frame
+        
+        # TODO: update states
+        
+        pass
+    
+    def get_states(self):
+        
+        # TODO: return states (jacobian, angular_momentum, torque)
+        
+        pass
+    
     def get_jacobian(self, theta):
 
         jacobian_elements = []
@@ -109,6 +127,6 @@ class ControlMomentGyroAssembly:
 
         return angular_momentum
 
-    def get_torque(self):
+    def get_torque(self, jacobian, cmgs_velocities):
         pass
 
