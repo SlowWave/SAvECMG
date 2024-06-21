@@ -1,15 +1,25 @@
 import numpy as np
-
+from .cmg import ControlMomentGyro
 
 class ControlMomentGyroAssembly:
     def __init__(self, cmgs_beta, cmgs_availability):
 
         self.cmgs_beta = cmgs_beta
         self.cmgs_availability = cmgs_availability
-        self.cmgs_array = [None, None, None, None]
+        self.cmgs_array = None
         self.jacobian = None
         self.angular_momentum = None
         self.torque = None
+
+    def initialize_cmgs_array(self, cmgs_theta, cmgs_momenta, cmgs_model):
+        
+        self.cmgs_array = list()
+        
+        for availability in self.cmgs_availability:
+            if availability:
+                self.cmgs_array.append(ControlMomentGyro(theta=cmgs_theta, angular_momentum=cmgs_momenta, model=cmgs_model))
+            else:
+                self.cmgs_array.append(None)
 
     def propagate_states(self, cmgs_velocities_reference):
         
