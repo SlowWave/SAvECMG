@@ -6,6 +6,9 @@ class ControlMomentGyroAssembly:
 
         self.beta = np.array([0.0, 0.0, 0.0, 0.0])
         self.cmg_array = [True, True, True, True]
+        self.jacobian = None
+        self.angular_momentum = None
+        self.torque = None
 
     def propagate_states(self, cmgs_velocities_reference):
         
