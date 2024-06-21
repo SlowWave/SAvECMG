@@ -80,10 +80,10 @@ class ControlMomentGyroAssembly:
             cmgs_momenta, np.where(np.array(self.cmg_array) == False)[0]
         )
 
-        angular_momentum_elements = []
+        rotation_matrix = []
 
         if self.cmg_array[0]:
-            angular_momentum_elements.append(
+            rotation_matrix.append(
                 np.array(
                     [
                         -np.cos(self.beta[0]) * np.sin(theta[0]),
@@ -93,7 +93,7 @@ class ControlMomentGyroAssembly:
                 )
             )
         if self.cmg_array[1]:
-            angular_momentum_elements.append(
+            rotation_matrix.append(
                 np.array(
                     [
                         -np.cos(theta[1]),
@@ -103,7 +103,7 @@ class ControlMomentGyroAssembly:
                 )
             )
         if self.cmg_array[2]:
-            angular_momentum_elements.append(
+            rotation_matrix.append(
                 np.array(
                     [
                         np.cos(self.beta[2]) * np.sin(theta[2]),
@@ -113,7 +113,7 @@ class ControlMomentGyroAssembly:
                 )
             )
         if self.cmg_array[3]:
-            angular_momentum_elements.append(
+            rotation_matrix.append(
                 np.array(
                     [
                         np.cos(theta[3]),
@@ -123,7 +123,7 @@ class ControlMomentGyroAssembly:
                 )
             )
 
-        angular_momentum = np.dot(np.transpose(angular_momentum_elements), cmgs_momenta)
+        angular_momentum = np.dot(np.transpose(rotation_matrix), cmgs_momenta)
 
         return angular_momentum
 
