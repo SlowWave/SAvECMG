@@ -2,10 +2,11 @@ import numpy as np
 
 
 class ControlMomentGyroAssembly:
-    def __init__(self):
+    def __init__(self, cmgs_beta, cmgs_availability):
 
-        self.cmgs_beta = np.array([0.0, 0.0, 0.0, 0.0])
-        self.cmgs_array = [True, True, True, True]
+        self.cmgs_beta = cmgs_beta
+        self.cmgs_availability = cmgs_availability
+        self.cmgs_array = [None, None, None, None]
         self.jacobian = None
         self.angular_momentum = None
         self.torque = None
@@ -30,7 +31,7 @@ class ControlMomentGyroAssembly:
 
         jacobian_elements = []
 
-        if self.cmgs_array[0]:
+        if self.cmgs_availability[0]:
             jacobian_elements.append(
                 np.array(
                     [
@@ -40,7 +41,7 @@ class ControlMomentGyroAssembly:
                     ]
                 )
             )
-        if self.cmgs_array[1]:
+        if self.cmgs_availability[1]:
             jacobian_elements.append(
                 np.array(
                     [
@@ -50,7 +51,7 @@ class ControlMomentGyroAssembly:
                     ]
                 )
             )
-        if self.cmgs_array[2]:
+        if self.cmgs_availability[2]:
             jacobian_elements.append(
                 np.array(
                     [
@@ -60,7 +61,7 @@ class ControlMomentGyroAssembly:
                     ]
                 )
             )
-        if self.cmgs_array[3]:
+        if self.cmgs_availability[3]:
             jacobian_elements.append(
                 np.array(
                     [
@@ -78,12 +79,12 @@ class ControlMomentGyroAssembly:
     def get_angular_momentum(self, cmgs_theta, cmgs_momenta):
 
         cmgs_momenta = np.delete(
-            cmgs_momenta, np.where(np.array(self.cmgs_array) == False)[0]  # noqa: E712
+            cmgs_momenta, np.where(np.array(self.cmgs_availability) == False)[0]  # noqa: E712
         )
 
         rotation_matrix = []
 
-        if self.cmgs_array[0]:
+        if self.cmgs_availability[0]:
             rotation_matrix.append(
                 np.array(
                     [
@@ -93,7 +94,7 @@ class ControlMomentGyroAssembly:
                     ]
                 )
             )
-        if self.cmgs_array[1]:
+        if self.cmgs_availability[1]:
             rotation_matrix.append(
                 np.array(
                     [
@@ -103,7 +104,7 @@ class ControlMomentGyroAssembly:
                     ]
                 )
             )
-        if self.cmgs_array[2]:
+        if self.cmgs_availability[2]:
             rotation_matrix.append(
                 np.array(
                     [
@@ -113,7 +114,7 @@ class ControlMomentGyroAssembly:
                     ]
                 )
             )
-        if self.cmgs_array[3]:
+        if self.cmgs_availability[3]:
             rotation_matrix.append(
                 np.array(
                     [
@@ -131,11 +132,11 @@ class ControlMomentGyroAssembly:
     def get_torque(self, jacobian, cmgs_momenta, cmgs_velocities):
         
         cmgs_momenta = np.delete(
-            cmgs_momenta, np.where(np.array(self.cmgs_array) == False)[0]  # noqa: E712
+            cmgs_momenta, np.where(np.array(self.cmgs_availability) == False)[0]  # noqa: E712
         )
         
         cmgs_velocities = np.delete(
-            cmgs_velocities, np.where(np.array(self.cmgs_array) == False)[0]  # noqa: E712
+            cmgs_velocities, np.where(np.array(self.cmgs_availability) == False)[0]  # noqa: E712
         )
         
         torque = np.dot(np.dot(jacobian, np.diag(cmgs_momenta)), cmgs_velocities)
