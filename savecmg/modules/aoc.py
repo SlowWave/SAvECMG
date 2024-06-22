@@ -16,6 +16,9 @@ class AttitudeController:
 
     def get_control_torque(self, sc_quat, sc_rate):
 
+        sc_quat = sc_quat / np.linalg.norm(sc_quat)
+        sc_rate = np.array(sc_rate)
+
         sc_quat_ref_conj = np.array(
             [
                 self.sc_quat_ref[0],
