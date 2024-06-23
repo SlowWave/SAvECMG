@@ -29,7 +29,7 @@ timespan = np.linspace(0, 1000, 1000) * time_step
 # simulate S/C dynamics
 for i in range(1000):
     sc_body.propagate_states(
-        external_torque=np.array([0, 0, 0]),
+        external_torque=np.array([0.01, 0, 0]),
         cmga_torque=np.array([0, 0, 0]),
         cmga_angular_momentum=np.array([0, 0, 0]),
         time_step=time_step,
@@ -39,7 +39,6 @@ for i in range(1000):
     rate.append(states[1])
 
 # plot results
-
 fig = go.Figure()
 
 fig.add_trace(go.Scatter(x=timespan, y=[row[0] for row in quaternion]))
