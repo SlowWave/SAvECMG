@@ -3,11 +3,11 @@ from scipy.integrate import solve_ivp
 
 
 class SpacecraftBody:
-    def __init__(self):
+    def __init__(self, quaternion, rate, inertia):
 
-        self.quaternion = None
-        self.rate = None
-        self.inertia = None
+        self.quaternion = quaternion
+        self.rate = rate
+        self.inertia = inertia
 
     def propagate_states(
         self, external_torque, cmga_torque, cmga_angular_momentum, time_step
@@ -68,47 +68,3 @@ class SpacecraftBody:
 
         return x_dot
 
-
-if __name__ == "__main__":
-
-    import plotly.graph_objects as go
-
-    sc_body = SpacecraftBody()
-    sc_body.quaternion = [1, 0, 0, 0]
-    sc_body.rate = [0, 0, 0]
-    sc_body.inertia = np.eye(3)
-
-    time_step = 0.1
-
-    timespan = np.linspace(0, 1000, 1000) * time_step
-
-    quaternion = list()
-    rate = list()
-
-    for i in range(1000):
-        sc_body.propagate_states(
-            external_torque=np.array([0, 0, 0]),
-            cmga_torque=np.array([0, 0, 0]),
-            cmga_angular_momentum=np.array([0, 0, 0]),
-            time_step=time_step,
-        )
-        states = sc_body.get_states()
-        quaternion.append(states[0])
-        rate.append(states[1])
-
-    fig = go.Figure()
-
-    fig.add_trace(go.Scatter(x=timespan, y=[row[0] for row in quaternion]))
-    fig.add_trace(go.Scatter(x=timespan, y=[row[1] for row in quaternion]))
-    fig.add_trace(go.Scatter(x=timespan, y=[row[2] for row in quaternion]))
-    fig.add_trace(go.Scatter(x=timespan, y=[row[3] for row in quaternion]))
-
-    fig.show()
-
-    fig = go.Figure()
-
-    fig.add_trace(go.Scatter(x=timespan, y=[row[0] for row in rate]))
-    fig.add_trace(go.Scatter(x=timespan, y=[row[1] for row in rate]))
-    fig.add_trace(go.Scatter(x=timespan, y=[row[2] for row in rate]))
-
-    fig.show()
