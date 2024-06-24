@@ -58,31 +58,3 @@ class ControlMomentGyro:
 
         return x_dot
 
-
-if __name__ == "__main__":
-
-    import plotly.graph_objects as go
-
-    cmg = ControlMomentGyro(
-        theta=0, theta_dot=0, theta_dot_max=0.1, angular_momentum=0, model=0
-    )
-
-    theta = list()
-    theta_dot = list()
-    time_step = 0.1
-
-    timespan = np.linspace(0, 1000, 1000) * time_step
-
-    for i in range(1000):
-        cmg.propagate_states(theta_dot_ref=-0.3, time_step=time_step)
-        states = cmg.get_states()
-        theta.append(states[0])
-        theta_dot.append(states[1])
-
-    fig_1 = go.Figure()
-    fig_1.add_trace(go.Scatter(x=timespan, y=theta))
-    fig_1.show()
-
-    fig_2 = go.Figure()
-    fig_2.add_trace(go.Scatter(x=timespan, y=theta_dot))
-    fig_2.show()
