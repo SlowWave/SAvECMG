@@ -12,7 +12,7 @@ import numpy as np
 
 # set S/C inertia and initial quaternion and rate
 quaternion = [1, -0.5, 0.5, -1]
-rate = [0, 0, 0]
+rate = [0.1, 0, -0.3]
 inertia = np.eye(3)
 
 # initialize S/C object
