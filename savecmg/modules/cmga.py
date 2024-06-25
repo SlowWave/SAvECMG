@@ -4,6 +4,16 @@ from .cmg import ControlMomentGyro
 
 class ControlMomentGyroAssembly:
     def __init__(self, cmgs_beta, cmgs_availability):
+        """
+        Initializes a ControlMomentGyroAssembly object.
+
+        Args:
+            cmgs_beta (List[float]): A list of beta angles for the control moment gyroscopes.
+            cmgs_availability (List[bool]): A list of booleans indicating the availability of each control moment gyroscope.
+
+        Returns:
+            None
+        """
 
         self.cmgs_beta = cmgs_beta
         self.cmgs_availability = cmgs_availability
@@ -23,13 +33,28 @@ class ControlMomentGyroAssembly:
         cmgs_momenta=[50.0, 50.0, 50.0, 50.0],
         cmgs_model=None,
     ):
+        """
+        Initializes the control moment gyroscopes array with the given parameters.
+
+        Args:
+            cmgs_theta (List[float], optional): Initial values of theta angles for the control moment gyroscopes [rad]. Defaults to [0.0, 0.0, 0.0, 0.0].
+            cmgs_theta_dot (List[float], optional): Initial values of theta_dot angles for the control moment gyroscopes [rads]. Defaults to [0.0, 0.0, 0.0, 0.0].
+            cmgs_theta_dot_max (List[float], optional): Maximum values of theta_dot velocities for the control moment gyroscopes [rads]. Defaults to [1.5, 1.5, 1.5, 1.5].
+            cmgs_momenta (List[float], optional): Angular momenta values for the control moment gyroscopes [Nms]. Defaults to [50.0, 50.0, 50.0, 50.0].
+            cmgs_model (str, optional): The model of the control moment gyroscope. Defaults to None.
+
+        Returns:
+            None
+        """
 
         self.cmgs_array = list()
         self.cmgs_theta = list()
         self.cmgs_theta_dot = list()
         self.cmgs_momenta = list()
 
+        # populate cmgs_array
         for idx, availability in enumerate(self.cmgs_availability):
+            # if cmgs is available initialize a CMG object and append it to the cmgs_array
             if availability:
                 self.cmgs_array.append(
                     ControlMomentGyro(
@@ -43,6 +68,7 @@ class ControlMomentGyroAssembly:
                 self.cmgs_theta.append(cmgs_theta[idx])
                 self.cmgs_theta_dot.append(cmgs_theta_dot[idx])
                 self.cmgs_momenta.append(cmgs_momenta[idx])
+            # if cmgs is not available append None to the cmgs_array
             else:
                 self.cmgs_array.append(None)
                 self.cmgs_theta.append(None)
@@ -50,17 +76,31 @@ class ControlMomentGyroAssembly:
                 self.cmgs_momenta.append(None)
 
     def propagate_states(self, cmgs_theta_dot_ref, time_step):
+        """
+        Propagates the states CMGs array based on the given reference theta_dot and time step.
 
+        Args:
+            cmgs_theta_dot_ref (List[float]): A list of reference theta_dot values for the CMGs.
+            time_step (float): The time step for the propagation.
+
+        Returns:
+            None
+        """
+
+        # propagate CMGs dynamics for each available CMG in the cmgs_array
         for idx, cmg in enumerate(self.cmgs_array):
             if cmg is not None:
                 cmg.propagate_states(
                     theta_dot_ref=cmgs_theta_dot_ref[idx], time_step=time_step
                 )
+                
+                # update CMGs states
                 cmg_states = cmg.get_states()
                 self.cmgs_theta[idx] = cmg_states[0]
                 self.cmgs_theta_dot[idx] = cmg_states[1]
                 self.cmgs_momenta[idx] = cmg_states[2]
 
+        # update jacobian, angular_momentum, and torque
         self.jacobian = self.get_jacobian(self.cmgs_theta)
         self.angular_momentum = self.get_angular_momentum(
             self.cmgs_theta, self.cmgs_momenta
@@ -70,6 +110,17 @@ class ControlMomentGyroAssembly:
         )
 
     def get_states(self):
+        """
+        Returns a tuple containing the following CMGA states:
+        - `jacobian` (ndarray): Current CMGA jacobian matrix.
+        - `angular_momentum` (ndarray): Current CMGA angular momentum vector [Nms].
+        - `torque` (ndarray): Current CMGA torque vector [Nm].
+        - `cmgs_theta` (ndarray): Current theta angles of the CMGs array [rad].
+        - `cmgs_theta_dot` (ndarray): Current theta_dot velocities of the cCMGs array [rads].
+
+        Returns:
+            tuple: A tuple containing the current CMGA states.
+        """
 
         return (
             self.jacobian,
@@ -80,9 +131,19 @@ class ControlMomentGyroAssembly:
         )
 
     def get_jacobian(self, cmgs_theta):
+        """
+        Computes the CMGA Jacobian matrix based on the given CMGs theta angles.
+
+        Args:
+            cmgs_theta (List[float]): A list of CMGs theta angles [rad].
+
+        Returns:
+            ndarray: The Jacobian matrix calculated based on the input angles.
+        """
 
         jacobian_elements = []
 
+        # compute jacobian matrix elements
         if self.cmgs_availability[0]:
             jacobian_elements.append(
                 np.array(
@@ -124,12 +185,24 @@ class ControlMomentGyroAssembly:
                 )
             )
 
+        # jacobian matrix is a 3xn matrix where n is the number of available CMGs (1<=n<=4)
         jacobian = np.transpose(jacobian_elements)
 
         return jacobian
 
     def get_angular_momentum(self, cmgs_theta, cmgs_momenta):
+        """
+        Computes the CMGA angular momentum in S/C body frame based on the given CMGs theta angles and CMGs momenta.
 
+        Args:
+            cmgs_theta (List[float]): A list of CMGs theta angles [rad].
+            cmgs_momenta (List[float]): An array containing CMGs momenta [Nms].
+
+        Returns:
+            ndarray: CMGA angular momentum in S/C body frame [Nms].
+        """
+
+        # remove useless CMGs momenta based on CMGs availability
         cmgs_momenta = np.delete(
             cmgs_momenta,
             np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
@@ -137,6 +210,7 @@ class ControlMomentGyroAssembly:
 
         rotation_matrix = []
 
+        # compute rotation matrix elements
         if self.cmgs_availability[0]:
             rotation_matrix.append(
                 np.array(
@@ -178,22 +252,37 @@ class ControlMomentGyroAssembly:
                 )
             )
 
+        # compute CMGA angular momentum in S/C fixed frame
         angular_momentum = np.dot(np.transpose(rotation_matrix), cmgs_momenta)
 
         return angular_momentum
 
     def get_torque(self, jacobian, cmgs_momenta, cmgs_theta_dot):
+        """
+        Computes the torque based on the given CMGA jacobian matrix, CMGs momenta, and CMGs theta_dot.
 
+        Args:
+            jacobian: Jacobian matrix for the CMGA system.
+            cmgs_momenta (List[float]): CMGs momenta array [Nms].
+            cmgs_theta_dot (List[float]): CMGs angular velocities array [rads].
+
+        Returns:
+            CMGA Torque in S/C body frame [Nm].
+        """
+
+        # remove useless CMGs momenta based on CMGs availability
         cmgs_momenta = np.delete(
             cmgs_momenta,
             np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
         )
 
+        # remove useless CMGs theta_dot based on CMGs availability
         cmgs_theta_dot = np.delete(
             cmgs_theta_dot,
             np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
         )
 
+        # compute CMGA torque in S/C fixed frame
         torque = np.dot(np.dot(jacobian, np.diag(cmgs_momenta)), cmgs_theta_dot)
 
         return torque
