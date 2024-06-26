@@ -257,12 +257,11 @@ class ControlMomentGyroAssembly:
 
         return angular_momentum
 
-    def get_torque(self, jacobian, cmgs_momenta, cmgs_theta_dot):
+    def get_torque(self, cmgs_momenta, cmgs_theta_dot):
         """
-        Computes the torque based on the given CMGA jacobian matrix, CMGs momenta, and CMGs theta_dot.
+        Computes the torque based on the given CMGs momenta, and CMGs theta_dot.
 
         Args:
-            jacobian: Jacobian matrix for the CMGA system.
             cmgs_momenta (List[float]): CMGs momenta array [Nms].
             cmgs_theta_dot (List[float]): CMGs angular velocities array [rads].
 
@@ -283,6 +282,6 @@ class ControlMomentGyroAssembly:
         )
 
         # compute CMGA torque in S/C fixed frame
-        torque = np.dot(np.dot(jacobian, np.diag(cmgs_momenta)), cmgs_theta_dot)
+        torque = np.dot(np.dot(self.jacobian, np.diag(cmgs_momenta)), cmgs_theta_dot)
 
         return torque
