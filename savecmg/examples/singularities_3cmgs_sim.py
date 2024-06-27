@@ -41,7 +41,7 @@ for theta_1 in np.linspace(-np.pi, np.pi, n_points):
     print(np.rad2deg(theta_1))
     for theta_2 in np.linspace(-np.pi, np.pi, n_points):
         for theta_3 in np.linspace(-np.pi, np.pi, n_points):
-            jacobian = cmga.get_jacobian(np.array([0., theta_1, theta_2, theta_3]))
+            jacobian = cmga.get_jacobian(cmgs_momenta, np.array([0., theta_1, theta_2, theta_3]))
             det = np.linalg.det(jacobian)
             if np.abs(det) < det_limit:
                 momentum = cmga.get_angular_momentum(np.array([0., theta_1, theta_2, theta_3]), cmgs_momenta)
