@@ -51,42 +51,43 @@ class AttitudeController:
         sc_quat = sc_quat / np.linalg.norm(sc_quat)
         sc_rate = np.array(sc_rate)
 
-        # compute conjugate of the reference quaternion
-        sc_quat_ref_conj = np.array(
+        # compute conjugate of the current quaternion
+        sc_quat_conj = np.array(
             [
-                self.sc_quat_ref[0],
-                -self.sc_quat_ref[1],
-                -self.sc_quat_ref[2],
-                -self.sc_quat_ref[3],
+                sc_quat[0],
+                -sc_quat[1],
+                -sc_quat[2],
+                -sc_quat[3],
             ]
         )
 
         # compute error between current and reference quaternion
         sc_quat_err = np.array(
             [
-                +sc_quat[0] * sc_quat_ref_conj[0]
-                - sc_quat[1] * sc_quat_ref_conj[1]
-                - sc_quat[2] * sc_quat_ref_conj[2]
-                - sc_quat[3] * sc_quat_ref_conj[3],
-                sc_quat[0] * sc_quat_ref_conj[1]
-                + sc_quat[1] * sc_quat_ref_conj[0]
-                - sc_quat[2] * sc_quat_ref_conj[3]
-                + sc_quat[3] * sc_quat_ref_conj[2],
-                sc_quat[0] * sc_quat_ref_conj[2]
-                + sc_quat[1] * sc_quat_ref_conj[3]
-                + sc_quat[2] * sc_quat_ref_conj[0]
-                - sc_quat[3] * sc_quat_ref_conj[1],
-                sc_quat[0] * sc_quat_ref_conj[3]
-                - sc_quat[1] * sc_quat_ref_conj[2]
-                + sc_quat[2] * sc_quat_ref_conj[1]
-                + sc_quat[3] * sc_quat_ref_conj[0],
+                self.sc_quat_ref[0] * sc_quat_conj[0]
+                - self.sc_quat_ref[1] * sc_quat_conj[1]
+                - self.sc_quat_ref[2] * sc_quat_conj[2]
+                - self.sc_quat_ref[3] * sc_quat_conj[3],
+                self.sc_quat_ref[0] * sc_quat_conj[1]
+                + self.sc_quat_ref[1] * sc_quat_conj[0]
+                - self.sc_quat_ref[2] * sc_quat_conj[3]
+                + self.sc_quat_ref[3] * sc_quat_conj[2],
+                self.sc_quat_ref[0] * sc_quat_conj[2]
+                + self.sc_quat_ref[1] * sc_quat_conj[3]
+                + self.sc_quat_ref[2] * sc_quat_conj[0]
+                - self.sc_quat_ref[3] * sc_quat_conj[1],
+                self.sc_quat_ref[0] * sc_quat_conj[3]
+                - self.sc_quat_ref[1] * sc_quat_conj[2]
+                + self.sc_quat_ref[2] * sc_quat_conj[1]
+                + self.sc_quat_ref[3] * sc_quat_conj[0],
             ]
         )
+
 
         # compute error between current and reference rate
         sc_rate_err = self.sc_rate_ref - sc_rate
 
         # compute control torque
-        control_torque = -self.k_quat * sc_quat_err[1:4] - self.k_rate * sc_rate_err
+        control_torque = - self.k_quat * sc_quat_err[1:4] - self.k_rate * sc_rate_err
 
         return control_torque
