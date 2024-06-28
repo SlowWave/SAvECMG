@@ -1,6 +1,7 @@
 import numpy as np
 from .cmg import ControlMomentGyro
 
+# TODO: add another CMG configuration (object?)
 
 class ControlMomentGyroAssembly:
     def __init__(self, cmgs_beta, cmgs_availability):
@@ -8,7 +9,7 @@ class ControlMomentGyroAssembly:
         Initializes a ControlMomentGyroAssembly object.
 
         Args:
-            cmgs_beta (List[float]): A list of beta angles for the control moment gyroscopes.
+            cmgs_beta (List[float]): A list of beta angles for the control moment gyroscopes [rad].
             cmgs_availability (List[bool]): A list of booleans indicating the availability of each control moment gyroscope.
 
         Returns:
@@ -300,6 +301,6 @@ class ControlMomentGyroAssembly:
         ).tolist()
 
         # compute CMGA torque in S/C fixed frame
-        torque = np.dot(np.dot(self.jacobian, np.diag(cmgs_momenta)), cmgs_theta_dot)
+        torque = np.dot(self.jacobian, cmgs_theta_dot)
 
         return torque
