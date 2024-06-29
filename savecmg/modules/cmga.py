@@ -313,12 +313,14 @@ class ControlMomentGyroAssembly:
         return torque
 
     def _get_cmgs_theta_zero_momentum(self):
-        
+
         if sum(self.cmgs_availability) == 2:
             initial_guess = [0, 0]
-        else:
+        elif sum(self.cmgs_availability) == 3:
             initial_guess = [0, 0, 0]
-
+        elif sum(self.cmgs_availability) == 4:
+            return [0, 0, 0, 0]
+        
         solution = iter(fsolve(self.__zero_momentum_equations, initial_guess, args=(self.cmgs_beta, self.cmgs_availability)))
         
         theta = list()
