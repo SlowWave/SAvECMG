@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.optimize import fsolve
 from .cmg import ControlMomentGyro
 
 # TODO: add another CMG configuration (object?)
@@ -28,6 +29,7 @@ class ControlMomentGyroAssembly:
 
     def initialize_cmgs_array(
         self,
+        set_zero_momentum=True,
         cmgs_theta=[0.0, 0.0, 0.0, 0.0],
         cmgs_theta_dot=[0.0, 0.0, 0.0, 0.0],
         cmgs_theta_dot_max=[1.5, 1.5, 1.5, 1.5],
@@ -38,6 +40,7 @@ class ControlMomentGyroAssembly:
         Initializes the control moment gyroscopes array with the given parameters.
 
         Args:
+            set_zero_momentum (bool, optional): Whether to set zero momentum configuration for the control moment gyroscopes. If True, the initial values of CMGs theta are chosen to have zero angular momentum. Defaults to True.
             cmgs_theta (List[float], optional): Initial values of theta angles for the control moment gyroscopes [rad]. Defaults to [0.0, 0.0, 0.0, 0.0].
             cmgs_theta_dot (List[float], optional): Initial values of theta_dot angles for the control moment gyroscopes [rads]. Defaults to [0.0, 0.0, 0.0, 0.0].
             cmgs_theta_dot_max (List[float], optional): Maximum values of theta_dot velocities for the control moment gyroscopes [rads]. Defaults to [1.5, 1.5, 1.5, 1.5].
@@ -52,6 +55,10 @@ class ControlMomentGyroAssembly:
         self.cmgs_theta = list()
         self.cmgs_theta_dot = list()
         self.cmgs_momenta = list()
+
+        if set_zero_momentum:
+            cmgs_theta = self._get_cmgs_theta_zero_momentum()
+            cmgs_theta_dot = [0.0, 0.0, 0.0, 0.0]
 
         # populate cmgs_array
         for idx, availability in enumerate(self.cmgs_availability):
@@ -304,3 +311,92 @@ class ControlMomentGyroAssembly:
         torque = np.dot(self.jacobian, cmgs_theta_dot)
 
         return torque
+
+    def _get_cmgs_theta_zero_momentum(self):
+        
+        if sum(self.cmgs_availability) == 2:
+            initial_guess = [0, 0]
+        else:
+            initial_guess = [0, 0, 0]
+
+        solution = iter(fsolve(self.__zero_momentum_equations, initial_guess, args=(self.cmgs_beta, self.cmgs_availability)))
+        
+        theta = list()
+        for cmg in self.cmgs_availability:
+            if cmg:
+                theta.append(next(solution))
+            else:
+                theta.append(0)
+        
+        return theta
+        
+    def __zero_momentum_equations(self, vars, beta, cmgs_availability):
+
+        match cmgs_availability:
+            
+            # 4 CMGs
+            case [True, True, True, True]:
+                k = [1, 1, 1, 1]
+                theta_4 = 0
+                theta_1, theta_2, theta_3 = vars
+            # 3 CMGs
+            case [False, True, True, True]:
+                k = [0, 1, 1, 1]
+                theta_1 = 0
+                theta_2, theta_3, theta_4 = vars
+            case [True, False, True, True]:
+                k = [1, 0, 1, 1]
+                theta_3 = 0
+                theta_1, theta_2, theta_4 = vars
+            case [True, True, False, True]:
+                k = [1, 1, 0, 1]
+                theta_3 = 0
+                theta_1, theta_2, theta_4 = vars
+            case [True, True, True, False]:
+                k = [1, 1, 1, 0]
+                theta_4 = 0
+                theta_1, theta_2, theta_3 = vars
+            # 2 CMGs
+            case [True, True, False, False]:
+                k = [1, 1, 0, 0]
+                theta_3 = 0
+                theta_4 = 0
+                theta_1, theta_2 = vars
+            case [True, False, True, False]:
+                k = [1, 0, 1, 0]
+                theta_2 = 0
+                theta_4 = 0
+                theta_1, theta_3 = vars
+            case [True, False, False, True]:
+                k = [1, 0, 0, 1]
+                theta_2 = 0
+                theta_3 = 0
+                theta_1, theta_4 = vars
+            case [False, True, True, False]:
+                k = [0, 1, 0, 1]
+                theta_1 = 0
+                theta_4 = 0
+                theta_2, theta_3 = vars
+            case [False, True, False, True]:
+                k = [0, 1, 0, 1]
+                theta_1 = 0
+                theta_3 = 0
+                theta_2, theta_4 = vars
+            case [False, False, True, True]:
+                k = [0, 0, 1, 1]
+                theta_1 = 0
+                theta_2 = 0
+                theta_3, theta_4 = vars
+
+        eq_1 = -k[0] * np.cos(beta[0]) * np.sin(theta_1) - k[1] * np.cos(theta_2) + k[2] * np.cos(beta[2]) * np.sin(theta_3) + k[3] * np.cos(theta_4)
+        eq_2 = k[0] * np.cos(theta_1) - k[1] * np.cos(beta[1]) * np.sin(theta_2) - k[2] * np.cos(theta_3) + k[3] * np.cos(beta[3]) * np.sin(theta_4)
+        eq_3 = k[0] * np.sin(beta[0]) * np.sin(theta_1) + k[1] * np.sin(beta[1]) * np.sin(theta_2) + k[2] * np.sin(beta[2]) * np.sin(theta_3) + k[3] * np.sin(beta[3]) * np.sin(theta_4)
+        
+        if sum(k) == 2:
+            eqs = [eq_1, eq_2]
+        else:
+            eqs = [eq_1, eq_2, eq_3]
+        
+        return eqs
+    
+    
