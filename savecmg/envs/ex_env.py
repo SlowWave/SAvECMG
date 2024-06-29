@@ -45,7 +45,7 @@ class Environment:
         sc_init_rate=[0, 0, 0],
         sc_quat_ref=[0, 0, 0, 1],
         sc_rate_ref=[0, 0, 0],
-        sc_moi=50,
+        sc_moi=100,
         time_step=0.5,
     ):
 
@@ -61,7 +61,7 @@ class Environment:
         self.cmga.initialize_cmgs_array(cmgs_momenta=cmgs_momenta)
 
         # initialize AOC
-        self.aoc = AttitudeController(0.5, 10)
+        self.aoc = AttitudeController(1, 10)
         self.aoc.set_reference(sc_quat_ref, sc_rate_ref)
 
         # get simulation data
@@ -203,16 +203,14 @@ class Environment:
         fig.show()
 
 
-
-
 if __name__ == "__main__":
 
     env = Environment()
-    control_torque, cmga_jacobian = env.reset()
+    cmgs_availability = [True, True, True, False]
+    control_torque, cmga_jacobian = env.reset(cmgs_availability=cmgs_availability, sc_quat_ref=[-1, -1, -1, -1])
     manip_idx = list()
 
-    for _ in range(300):
-
+    for _ in range(1000):
         try:
             manip_idx.append(np.sqrt(np.linalg.det(np.dot(cmga_jacobian, cmga_jacobian.T))))
 
@@ -224,9 +222,16 @@ if __name__ == "__main__":
             print("singular matrix")
             break
 
-        cmgs_theta_dot_ref = np.concatenate(([0], cmgs_theta_dot_ref))
-        # print(cmgs_theta_dot_ref)
-        control_torque, cmga_jacobian = env.step(cmgs_theta_dot_ref)
+        cmgs_theta_dot_ref_iter = iter(cmgs_theta_dot_ref)
+        full_cmgs_theta_dot_ref = list()
+
+        for cmg in cmgs_availability:
+            if cmg:
+                full_cmgs_theta_dot_ref.append(next(cmgs_theta_dot_ref_iter))
+            else:
+                full_cmgs_theta_dot_ref.append(0)
+
+        control_torque, cmga_jacobian = env.step(full_cmgs_theta_dot_ref)
 
     env.plot_sim_data()
 
