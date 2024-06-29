@@ -162,17 +162,17 @@ class ControlMomentGyroAssembly:
             ndarray: The Jacobian matrix calculated based on the input angles.
         """
 
-        cmgs_momenta = np.delete(
-            cmgs_momenta,
-            np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
-        ).tolist()
+        # cmgs_momenta = np.delete(
+        #     cmgs_momenta,
+        #     np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
+        # ).tolist()
 
         jacobian_elements = []
 
         # compute jacobian matrix elements
         if self.cmgs_availability[0]:
             jacobian_elements.append(
-                np.array(
+                cmgs_momenta[0] * np.array(
                     [
                         -np.cos(self.cmgs_beta[0]) * np.cos(cmgs_theta[0]),
                         -np.sin(cmgs_theta[0]),
@@ -182,7 +182,7 @@ class ControlMomentGyroAssembly:
             )
         if self.cmgs_availability[1]:
             jacobian_elements.append(
-                np.array(
+                cmgs_momenta[1] * np.array(
                     [
                         np.sin(cmgs_theta[1]),
                         -np.cos(self.cmgs_beta[1]) * np.cos(cmgs_theta[1]),
@@ -192,7 +192,7 @@ class ControlMomentGyroAssembly:
             )
         if self.cmgs_availability[2]:
             jacobian_elements.append(
-                np.array(
+                cmgs_momenta[2] * np.array(
                     [
                         np.cos(cmgs_theta[2]) * np.cos(cmgs_theta[2]),
                         np.sin(cmgs_theta[2]),
@@ -202,7 +202,7 @@ class ControlMomentGyroAssembly:
             )
         if self.cmgs_availability[3]:
             jacobian_elements.append(
-                np.array(
+                cmgs_momenta[3] * np.array(
                     [
                         -np.sin(cmgs_theta[3]),
                         np.cos(self.cmgs_beta[3]) * np.cos(cmgs_theta[3]),
@@ -212,7 +212,7 @@ class ControlMomentGyroAssembly:
             )
 
         # jacobian matrix is a 3xn matrix where n is the number of available CMGs (1<=n<=4)
-        jacobian = np.dot(np.diag(cmgs_momenta), np.transpose(jacobian_elements))
+        jacobian = np.transpose(jacobian_elements)
 
         return jacobian
 
@@ -346,8 +346,8 @@ class ControlMomentGyroAssembly:
                 theta_2, theta_3, theta_4 = vars
             case [True, False, True, True]:
                 k = [1, 0, 1, 1]
-                theta_3 = 0
-                theta_1, theta_2, theta_4 = vars
+                theta_2 = 0
+                theta_1, theta_3, theta_4 = vars
             case [True, True, False, True]:
                 k = [1, 1, 0, 1]
                 theta_3 = 0
