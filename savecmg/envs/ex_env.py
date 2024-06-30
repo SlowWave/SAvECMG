@@ -45,7 +45,7 @@ class Environment:
         sc_init_rate=[0, 0, 0],
         sc_quat_ref=[0, 0, 0, 1],
         sc_rate_ref=[0, 0, 0],
-        sc_moi=100,
+        sc_moi=50,
         time_step=0.5,
     ):
 
@@ -205,22 +205,18 @@ class Environment:
 
 if __name__ == "__main__":
 
-    env = Environment()
-    cmgs_availability = [True, True, True, False]
-    control_torque, cmga_jacobian = env.reset(cmgs_availability=cmgs_availability, sc_quat_ref=[-1, -1, -1, -1])
-    manip_idx = list()
+    def simple_control(cmgs_availability, manip_idx, cmga_jacobian, control_torque, cmgs_theta_dot_prev):
 
-    for _ in range(1000):
         try:
-            manip_idx.append(np.sqrt(np.linalg.det(np.dot(cmga_jacobian, cmga_jacobian.T))))
+            manip_idx.append(np.sqrt(np.abs(np.linalg.det(np.dot(cmga_jacobian, cmga_jacobian.T)))))
 
             cmgs_theta_dot_ref = np.dot(
-                np.linalg.inv(cmga_jacobian),
+                np.linalg.pinv(cmga_jacobian),
                 control_torque,
             )
         except Exception:
             print("singular matrix")
-            break
+            return cmgs_theta_dot_prev
 
         cmgs_theta_dot_ref_iter = iter(cmgs_theta_dot_ref)
         full_cmgs_theta_dot_ref = list()
@@ -230,8 +226,91 @@ if __name__ == "__main__":
                 full_cmgs_theta_dot_ref.append(next(cmgs_theta_dot_ref_iter))
             else:
                 full_cmgs_theta_dot_ref.append(0)
+            
+        return full_cmgs_theta_dot_ref
 
-        control_torque, cmga_jacobian = env.step(full_cmgs_theta_dot_ref)
+    def robust_control(cmgs_availability, manip_idx_list, cmga_jacobian, control_torque, cmgs_theta_dot_prev):
+
+        alpha0 = 1
+        ni = 0.000001
+        manip_idx = np.sqrt(np.abs(np.linalg.det(np.dot(cmga_jacobian, cmga_jacobian.T))))
+        alpha = alpha0 * np.exp(-ni * manip_idx)
+        # print(alpha)
+        
+        manip_idx_list.append(manip_idx)
+
+        jacob_quad = np.dot(cmga_jacobian, cmga_jacobian.T)
+        inv_term = np.linalg.inv(jacob_quad + alpha * np.eye(3))
+        pseudo_jacob_inv = np.dot(cmga_jacobian.T, inv_term)
+        
+        cmgs_theta_dot_ref = np.dot(pseudo_jacob_inv, control_torque)
+
+        cmgs_theta_dot_ref_iter = iter(cmgs_theta_dot_ref)
+        full_cmgs_theta_dot_ref = list()
+
+        for cmg in cmgs_availability:
+            if cmg:
+                full_cmgs_theta_dot_ref.append(next(cmgs_theta_dot_ref_iter))
+            else:
+                full_cmgs_theta_dot_ref.append(0)
+            
+        return full_cmgs_theta_dot_ref
+
+    def null_torque_control(cmgs_availability, manip_idx_list, cmga_jacobian, control_torque):
+
+        alpha0 = 1
+        ni = 0.001
+        manip_idx = np.sqrt(np.abs(np.linalg.det(np.dot(cmga_jacobian, cmga_jacobian.T))))
+        alpha = alpha0 * np.exp(-ni * manip_idx)
+        # print(alpha)
+        
+        manip_idx_list.append(manip_idx)
+
+        jacob_quad = np.dot(cmga_jacobian, cmga_jacobian.T)
+        # inv_term = np.linalg.inv(jacob_quad + alpha * np.eye(3))
+        inv_term = np.linalg.inv(jacob_quad)
+        pseudo_jacob_inv = np.dot(cmga_jacobian.T, inv_term)
+        
+        null_torque_theta_dot = alpha * np.dot((np.eye(4) - np.dot(cmga_jacobian.T, np.dot(inv_term, cmga_jacobian))), [1, 1, 1, 1])
+        
+        print(null_torque_theta_dot)
+        
+        cmgs_theta_dot_ref = np.dot(pseudo_jacob_inv, control_torque) + null_torque_theta_dot
+
+        cmgs_theta_dot_ref_iter = iter(cmgs_theta_dot_ref)
+        full_cmgs_theta_dot_ref = list()
+
+        for cmg in cmgs_availability:
+            if cmg:
+                full_cmgs_theta_dot_ref.append(next(cmgs_theta_dot_ref_iter))
+            else:
+                full_cmgs_theta_dot_ref.append(0)
+            
+        return full_cmgs_theta_dot_ref
+
+
+
+
+    env = Environment()
+    cmgs_availability = [True, True, True, True]
+    control_torque, cmga_jacobian = env.reset(
+        cmgs_availability=cmgs_availability,
+        cmgs_beta=[0, 30, 90, 60],
+        sc_quat_ref=[-1, -1, -1, -1],
+        sc_moi=350,
+    )
+    manip_idx = list()
+
+    cmgs_theta_dot_ref = [0, 0, 0, 0]
+
+    for _ in range(1000):
+        
+        # cmgs_theta_dot_ref = simple_control(cmgs_availability, manip_idx, cmga_jacobian, control_torque, cmgs_theta_dot_ref)
+        cmgs_theta_dot_ref = robust_control(cmgs_availability, manip_idx, cmga_jacobian, control_torque, cmgs_theta_dot_ref)
+        # cmgs_theta_dot_ref = null_torque_control(cmgs_avai lability, manip_idx, cmga_jacobian, control_torque)
+
+
+        control_torque, cmga_jacobian = env.step(cmgs_theta_dot_ref)
 
     env.plot_sim_data()
 
