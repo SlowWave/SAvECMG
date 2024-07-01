@@ -194,7 +194,7 @@ class ControlMomentGyroAssembly:
             jacobian_elements.append(
                 cmgs_momenta[2] * np.array(
                     [
-                        np.cos(cmgs_theta[2]) * np.cos(cmgs_theta[2]),
+                        np.cos(self.cmgs_beta[2]) * np.cos(cmgs_theta[2]),
                         np.sin(cmgs_theta[2]),
                         np.sin(self.cmgs_beta[2]) * np.cos(cmgs_theta[2]),
                     ]
