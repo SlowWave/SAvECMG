@@ -5,7 +5,6 @@ import numpy as np
 sys.path.append(os.path.normpath(os.path.dirname(__file__) + os.sep + os.pardir))
 
 from modules.cmga import ControlMomentGyroAssembly
-import sympy as sym
 
 CMGA = ControlMomentGyroAssembly([0,0,0,np.pi/2],[True,True,True,True])
 CMGA.initialize_cmgs_array(cmgs_momenta=[10,10,10,10])
