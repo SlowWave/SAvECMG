@@ -11,18 +11,18 @@ import numpy as np
 
 
 # set S/C inertia and initial quaternion and rate
-quaternion = [1, -0.5, 0.5, -1]
-rate = [0.1, 0, -0.3]
-inertia = np.eye(3)
+quaternion = [1, 0, 0, 0]
+rate = [0, 0, 0]
+inertia = np.eye(3) * 50
 
 # initialize S/C object
 sc_body = SpacecraftBody(quaternion, rate, inertia)
 
 # initialize AOC object
-aoc = AttitudeController(1, 1)
+aoc = AttitudeController(1, 10)
 
 # set reference quaternion and rate
-reference_quaternion = [0, 0, 0, 1]
+reference_quaternion = [0, 1, 0, -1]
 reference_rate = [0, 0, 0]
 aoc.set_reference(reference_quaternion, reference_rate)
 
@@ -38,18 +38,25 @@ time_step = 0.1
 timespan = np.linspace(0, 1000, 1000) * time_step
 
 # simulate S/C dynamics
-for i in range(1000):
+for i in range(5000):
     
     # get AOC control inputs
     control_torque = aoc.get_control_torque(quaternion, rate)
     
-    
-    sc_body.propagate_states(
-        external_torque=np.array([0, 0, 0]),
-        cmga_torque=np.array(control_torque),
-        cmga_angular_momentum=np.array([0, 0, 0]),
-        time_step=time_step,
-    )
+    if i < 10:
+        sc_body.propagate_states(
+            external_torque=np.array([0, 0, 0]),
+            cmga_torque=np.array([0, 0, 0]),
+            cmga_angular_momentum=np.array([0, 0, 0]),
+            time_step=time_step,
+        )
+    else:
+        sc_body.propagate_states(
+            external_torque=-control_torque,
+            cmga_torque=np.array([0, 0, 0]),
+            cmga_angular_momentum=np.array([0, 0, 0]),
+            time_step=time_step,
+        )
     quaternion, rate = sc_body.get_states()
     quaternions.append(quaternion)
     rates.append(rate)

@@ -297,13 +297,13 @@ if __name__ == "__main__":
         cmgs_availability=cmgs_availability,
         cmgs_beta=[0, 30, 90, 60],
         sc_quat_ref=[-1, -1, -1, -1],
-        sc_moi=350,
+        sc_moi=1000,
     )
     manip_idx = list()
 
     cmgs_theta_dot_ref = [0, 0, 0, 0]
 
-    for _ in range(1000):
+    for _ in range(2000):
         
         # cmgs_theta_dot_ref = simple_control(cmgs_availability, manip_idx, cmga_jacobian, control_torque, cmgs_theta_dot_ref)
         cmgs_theta_dot_ref = robust_control(cmgs_availability, manip_idx, cmga_jacobian, control_torque, cmgs_theta_dot_ref)
