@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import fsolve
 from .cmg import ControlMomentGyro
+import sympy as sym
 
 # TODO: add another CMG configuration (object?)
 
@@ -24,6 +25,9 @@ class ControlMomentGyroAssembly:
         self.cmgs_theta_dot = None
         self.cmgs_momenta = None
         self.jacobian = None
+        self.symbolic_jacobian = None
+        self.symbolic_dJ_dtheta = None 
+        self.dJ_dtheta = None 
         self.angular_momentum = None
         self.torque = None
 
@@ -82,6 +86,9 @@ class ControlMomentGyroAssembly:
                 self.cmgs_theta.append(None)
                 self.cmgs_theta_dot.append(None)
                 self.cmgs_momenta.append(None)
+        
+        self.differentiate_symbolic_jacobian()
+        
 
     def propagate_states(self, cmgs_theta_dot_ref, time_step):
         """
@@ -215,6 +222,138 @@ class ControlMomentGyroAssembly:
         jacobian = np.transpose(jacobian_elements)
 
         return jacobian
+    def define_symbolic_jacobian(self):
+        
+        """
+        Computes the CMGA Symbolic Jacobian matrix based on the given CMGs theta angles.
+
+        Args:
+            None
+
+        Returns:
+            ndarray: None
+        """
+
+        # cmgs_momenta = np.delete(
+        #     cmgs_momenta,
+        #     np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
+        # ).tolist()
+        cmgs_momenta = self.cmgs_momenta
+        theta_1 = sym.Symbol('theta_1')
+        theta_2 = sym.Symbol('theta_2')
+        theta_3 = sym.Symbol('theta_3')
+        theta_4 = sym.Symbol('theta_4')
+        jacobian_elements = []
+
+        # compute jacobian matrix elements
+        if self.cmgs_availability[0]:
+            jacobian_elements.append(
+                cmgs_momenta[0] * np.array(
+                    [
+                        -sym.cos(self.cmgs_beta[0]) * sym.cos(theta_1),
+                        -sym.sin(theta_1),
+                        sym.sin(self.cmgs_beta[0]) *sym.cos(theta_1),
+                    ]
+                )
+            )
+        if self.cmgs_availability[1]:
+            jacobian_elements.append(
+                cmgs_momenta[1] * np.array(
+                    [
+                        sym.sin(theta_2),
+                        -sym.cos(self.cmgs_beta[1]) * sym.cos(theta_2),
+                        sym.sin(self.cmgs_beta[1]) * sym.cos(theta_2),
+                    ]
+                )
+            )
+        if self.cmgs_availability[2]:
+            jacobian_elements.append(
+                cmgs_momenta[2] * np.array(
+                    [
+                        sym.cos(self.cmgs_beta[2]) * sym.cos(theta_3),
+                        sym.sin(theta_3),
+                        sym.sin(self.cmgs_beta[2]) * sym.cos(theta_3),
+                    ]
+                )
+            )
+        if self.cmgs_availability[3]:
+            jacobian_elements.append(
+                cmgs_momenta[3] * np.array(
+                    [
+                        -sym.sin(theta_4),
+                        sym.cos(self.cmgs_beta[3]) * sym.cos(theta_4),
+                        sym.sin(self.cmgs_beta[3]) * sym.cos(theta_4),
+                    ]
+                )
+            )
+
+        # jacobian matrix is a 3xn matrix where n is the number of available CMGs (1<=n<=4)
+        self.symbolic_jacobian = np.transpose(jacobian_elements)
+        
+        
+    def differentiate_symbolic_jacobian(self):
+        
+        """
+        Computes the CMGA Symbolic Jacobian matrix based on the given CMGs theta angles.
+
+        Args:
+            None
+
+        Returns:
+            ndarray: an array of N symbolic components 
+        """
+        
+        self.define_symbolic_jacobian()
+        J = self.symbolic_jacobian
+        theta_1 = sym.Symbol('theta_1')
+        theta_2 = sym.Symbol('theta_2')
+        theta_3 = sym.Symbol('theta_3')
+        theta_4 = sym.Symbol('theta_4')
+        theta = sym.Array([theta_1,theta_2,theta_3,theta_4])
+        jacob_quad = sym.Matrix(J@J.T)
+        det_J = sym.sqrt((jacob_quad.det())**2)
+        symbolic_dJ_dtheta = -sym.diff(det_J,theta)
+        self.symbolic_dJ_dtheta = sym.lambdify((theta_1, theta_2, theta_3, theta_4), symbolic_dJ_dtheta, 'numpy')
+        
+        return symbolic_dJ_dtheta
+    
+    def substitute_to_symbolic_jacobian(self,theta):
+        """
+        Substitutes numeric values to jacobian
+
+        Args:
+            theta (list[float]): a list of numeric value of theta to be sustituted to symbolic jacobian
+
+        Returns:
+            ndarray: an array of N numeric components 
+        """
+        # theta_1 = sym.Symbol('theta_1')
+        # theta_2 = sym.Symbol('theta_2')
+        # theta_3 = sym.Symbol('theta_3')
+        # theta_4 = sym.Symbol('theta_4') 
+        
+
+        
+        
+        
+        self.dJ_dtheta    = self.symbolic_dJ_dtheta(theta[0],theta[1],theta[2],theta[3])
+        # if self.cmgs_availability[0]:
+        #     self.dJ_dtheta = self.symbolic_dJ_dtheta.subs(theta_1,np.double(theta[0]))
+        # if self.cmgs_availability[1]:
+        #     self.dJ_dtheta = self.dJ_dtheta.subs(theta_2,np.double(theta[1]))
+        # if self.cmgs_availability[2]:
+        #     self.dJ_dtheta = self.dJ_dtheta.subs(theta_3,np.double(theta[2]))
+        # if self.cmgs_availability[3]:
+        #     self.dJ_dtheta = self.dJ_dtheta.subs(theta_4,np.double(theta[3]))
+            
+            
+        
+        return self.dJ_dtheta    
+
+    
+    
+   
+    
 
     def get_angular_momentum(self, cmgs_theta, cmgs_momenta):
         """
