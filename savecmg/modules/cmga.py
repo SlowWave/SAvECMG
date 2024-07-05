@@ -6,7 +6,7 @@ import sympy as sym
 # TODO: add another CMG configuration (object?)
 
 class ControlMomentGyroAssembly:
-    def __init__(self, cmgs_beta, cmgs_availability):
+    def __init__(self, cmgs_beta, cmgs_availability, cmgs_momenta=[10.0, 10.0, 10.0, 10.0]):
         """
         Initializes a ControlMomentGyroAssembly object.
 
@@ -20,16 +20,20 @@ class ControlMomentGyroAssembly:
 
         self.cmgs_beta = cmgs_beta
         self.cmgs_availability = cmgs_availability
+        self.cmgs_momenta = cmgs_momenta
         self.cmgs_array = None
         self.cmgs_theta = None
         self.cmgs_theta_dot = None
-        self.cmgs_momenta = None
         self.jacobian = None
         self.symbolic_jacobian = None
         self.symbolic_dJ_dtheta = None 
         self.dJ_dtheta = None 
         self.angular_momentum = None
         self.torque = None
+        
+        self._symbolic_jacobian = self._compute_symbolic_jacobian()
+        self._symbolic_manip_idx = self._compute_symbolic_manip_idx()
+        self._symbolic_manip_idx_gradient = self._compute_symbolic_manip_idx_gradient()
 
     def initialize_cmgs_array(
         self,
@@ -87,9 +91,8 @@ class ControlMomentGyroAssembly:
                 self.cmgs_theta_dot.append(None)
                 self.cmgs_momenta.append(None)
         
-        self.differentiate_symbolic_jacobian()
+        # self.differentiate_symbolic_jacobian()
         
-
     def propagate_states(self, cmgs_theta_dot_ref, time_step):
         """
         Propagates the states CMGs array based on the given reference theta_dot and time step.
@@ -169,11 +172,6 @@ class ControlMomentGyroAssembly:
             ndarray: The Jacobian matrix calculated based on the input angles.
         """
 
-        # cmgs_momenta = np.delete(
-        #     cmgs_momenta,
-        #     np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
-        # ).tolist()
-
         jacobian_elements = []
 
         # compute jacobian matrix elements
@@ -222,6 +220,7 @@ class ControlMomentGyroAssembly:
         jacobian = np.transpose(jacobian_elements)
 
         return jacobian
+
     def define_symbolic_jacobian(self):
         
         """
@@ -234,10 +233,6 @@ class ControlMomentGyroAssembly:
             ndarray: None
         """
 
-        # cmgs_momenta = np.delete(
-        #     cmgs_momenta,
-        #     np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
-        # ).tolist()
         cmgs_momenta = self.cmgs_momenta
         theta_1 = sym.Symbol('theta_1')
         theta_2 = sym.Symbol('theta_2')
@@ -289,8 +284,7 @@ class ControlMomentGyroAssembly:
 
         # jacobian matrix is a 3xn matrix where n is the number of available CMGs (1<=n<=4)
         self.symbolic_jacobian = np.transpose(jacobian_elements)
-        
-        
+      
     def differentiate_symbolic_jacobian(self):
         
         """
@@ -311,12 +305,15 @@ class ControlMomentGyroAssembly:
         theta_4 = sym.Symbol('theta_4')
         theta = sym.Array([theta_1,theta_2,theta_3,theta_4])
         jacob_quad = sym.Matrix(J@J.T)
+        # print(jacob_quad)
         det_J = sym.sqrt((jacob_quad.det())**2)
+        print(det_J)
         symbolic_dJ_dtheta = -sym.diff(det_J,theta)
         self.symbolic_dJ_dtheta = sym.lambdify((theta_1, theta_2, theta_3, theta_4), symbolic_dJ_dtheta, 'numpy')
+        # print(self.symbolic_dJ_dtheta(0, 0, 0, 0))
         
         return symbolic_dJ_dtheta
-    
+
     def substitute_to_symbolic_jacobian(self,theta):
         """
         Substitutes numeric values to jacobian
@@ -349,11 +346,6 @@ class ControlMomentGyroAssembly:
             
         
         return self.dJ_dtheta    
-
-    
-    
-   
-    
 
     def get_angular_momentum(self, cmgs_theta, cmgs_momenta):
         """
@@ -451,6 +443,81 @@ class ControlMomentGyroAssembly:
 
         return torque
 
+    def _compute_symbolic_jacobian(self):
+        
+        theta_1 = sym.Symbol('theta_1')
+        theta_2 = sym.Symbol('theta_2')
+        theta_3 = sym.Symbol('theta_3')
+        theta_4 = sym.Symbol('theta_4')
+        
+        jacobian_elements = []
+
+        # compute jacobian matrix elements
+        if self.cmgs_availability[0]:
+            jacobian_elements.append(
+                self.cmgs_momenta[0] * np.array(
+                    [
+                        -np.cos(self.cmgs_beta[0]) * sym.cos(theta_1),
+                        -sym.sin(theta_1),
+                        np.sin(self.cmgs_beta[0]) *sym.cos(theta_1),
+                    ]
+                )
+            )
+        if self.cmgs_availability[1]:
+            jacobian_elements.append(
+                self.cmgs_momenta[1] * np.array(
+                    [
+                        sym.sin(theta_2),
+                        -np.cos(self.cmgs_beta[1]) * sym.cos(theta_2),
+                        np.sin(self.cmgs_beta[1]) * sym.cos(theta_2),
+                    ]
+                )
+            )
+        if self.cmgs_availability[2]:
+            jacobian_elements.append(
+                self.cmgs_momenta[2] * np.array(
+                    [
+                        np.cos(self.cmgs_beta[2]) * sym.cos(theta_3),
+                        sym.sin(theta_3),
+                        np.sin(self.cmgs_beta[2]) * sym.cos(theta_3),
+                    ]
+                )
+            )
+        if self.cmgs_availability[3]:
+            jacobian_elements.append(
+                self.cmgs_momenta[3] * np.array(
+                    [
+                        -sym.sin(theta_4),
+                        np.cos(self.cmgs_beta[3]) * sym.cos(theta_4),
+                        np.sin(self.cmgs_beta[3]) * sym.cos(theta_4),
+                    ]
+                )
+            )
+
+        # jacobian matrix is a 3xn matrix where n is the number of available CMGs (1<=n<=4)
+        symbolic_jacobian = sym.Matrix(np.transpose(jacobian_elements))
+        
+        return symbolic_jacobian
+    
+    def _compute_symbolic_manip_idx(self):
+
+        jacobian_det = sym.Matrix(np.dot(self._symbolic_jacobian, self._symbolic_jacobian.T)).det()
+        symbolic_manip_idx = sym.sqrt(sym.sqrt((jacobian_det)**2))
+
+        return symbolic_manip_idx
+    
+    def _compute_symbolic_manip_idx_gradient(self):
+        
+        theta_1 = sym.Symbol('theta_1')
+        theta_2 = sym.Symbol('theta_2')
+        theta_3 = sym.Symbol('theta_3')
+        theta_4 = sym.Symbol('theta_4')
+        
+        symbolic_theta = sym.Array([theta_1, theta_2, theta_3, theta_4])
+        manip_idx_gradient = - sym.diff(self._symbolic_manip_idx ** 2, symbolic_theta)
+
+        return manip_idx_gradient
+
     def _get_cmgs_theta_zero_momentum(self):
 
         if sum(self.cmgs_availability) == 2:
@@ -539,5 +606,5 @@ class ControlMomentGyroAssembly:
             eqs = [eq_1, eq_2, eq_3]
         
         return eqs
-    
-    
+
+
