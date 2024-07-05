@@ -413,12 +413,11 @@ class ControlMomentGyroAssembly:
 
         return angular_momentum
 
-    def get_torque(self, cmgs_momenta, cmgs_theta_dot):
+    def get_torque(self, cmgs_theta_dot):
         """
         Computes the torque based on the given CMGs momenta, and CMGs theta_dot.
 
         Args:
-            cmgs_momenta (List[float]): CMGs momenta array [Nms].
             cmgs_theta_dot (List[float]): CMGs angular velocities array [rads].
 
         Returns:
@@ -427,7 +426,7 @@ class ControlMomentGyroAssembly:
 
         # remove useless CMGs momenta based on CMGs availability
         cmgs_momenta = np.delete(
-            cmgs_momenta,
+            self.cmgs_momenta,
             np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
         ).tolist()
 
