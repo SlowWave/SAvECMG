@@ -65,7 +65,7 @@ class ControlMomentGyroAssembly:
         self.cmgs_momenta = list()
 
         if set_zero_momentum:
-            cmgs_theta = self._get_cmgs_theta_zero_momentum()
+            cmgs_theta = self._compute_cmgs_theta_zero_momentum()
             cmgs_theta_dot = [0.0, 0.0, 0.0, 0.0]
 
         # populate cmgs_array
@@ -546,7 +546,7 @@ class ControlMomentGyroAssembly:
 
         return manip_idx_gradient
 
-    def _get_cmgs_theta_zero_momentum(self):
+    def _compute_cmgs_theta_zero_momentum(self):
 
         if sum(self.cmgs_availability) == 2:
             initial_guess = [0, 0]
