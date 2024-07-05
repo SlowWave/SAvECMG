@@ -347,13 +347,12 @@ class ControlMomentGyroAssembly:
         
         return self.dJ_dtheta    
 
-    def get_angular_momentum(self, cmgs_theta, cmgs_momenta):
+    def get_angular_momentum(self, cmgs_theta):
         """
-        Computes the CMGA angular momentum in S/C body frame based on the given CMGs theta angles and CMGs momenta.
+        Computes the CMGA angular momentum in S/C body frame based on the given CMGs theta angles.
 
         Args:
             cmgs_theta (List[float]): A list of CMGs theta angles [rad].
-            cmgs_momenta (List[float]): An array containing CMGs momenta [Nms].
 
         Returns:
             ndarray: CMGA angular momentum in S/C body frame [Nms].
@@ -361,7 +360,7 @@ class ControlMomentGyroAssembly:
 
         # remove useless CMGs momenta based on CMGs availability
         cmgs_momenta = np.delete(
-            cmgs_momenta,
+            self.cmgs_momenta,
             np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
         ).tolist()
 
