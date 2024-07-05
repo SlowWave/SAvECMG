@@ -161,7 +161,7 @@ class ControlMomentGyroAssembly:
             self.cmgs_theta_dot,
         )
 
-    def get_jacobian(self, cmgs_momenta, cmgs_theta):
+    def _get_jacobian(self, cmgs_momenta, cmgs_theta):
         """
         Computes the CMGA Jacobian matrix based on the given CMGs theta angles.
 
@@ -434,6 +434,42 @@ class ControlMomentGyroAssembly:
         torque = np.dot(self.jacobian, cmgs_theta_dot)
 
         return torque
+
+    def get_jacobian(self, cmgs_theta):
+        
+        theta_1 = sym.Symbol('theta_1')
+        theta_2 = sym.Symbol('theta_2')
+        theta_3 = sym.Symbol('theta_3')
+        theta_4 = sym.Symbol('theta_4')
+        jacobian_function = sym.lambdify((theta_1, theta_2, theta_3, theta_4), self._symbolic_jacobian, 'numpy')
+
+        numeric_jacobian = jacobian_function(cmgs_theta[0], cmgs_theta[2], cmgs_theta[3], cmgs_theta[4])
+
+        return numeric_jacobian
+
+    def get_manip_idx(self, cmgs_theta):
+        
+        theta_1 = sym.Symbol('theta_1')
+        theta_2 = sym.Symbol('theta_2')
+        theta_3 = sym.Symbol('theta_3')
+        theta_4 = sym.Symbol('theta_4')
+        
+        manip_idx_function = sym.lambdify((theta_1, theta_2, theta_3, theta_4), self._symbolic_manip_idx, 'numpy')
+        numeric_manip_idx = manip_idx_function(cmgs_theta[0], cmgs_theta[2], cmgs_theta[3], cmgs_theta[4])
+
+        return numeric_manip_idx
+
+    def get_manip_idx_gradient(self, cmgs_theta):
+        
+        theta_1 = sym.Symbol('theta_1')
+        theta_2 = sym.Symbol('theta_2')
+        theta_3 = sym.Symbol('theta_3')
+        theta_4 = sym.Symbol('theta_4')
+        
+        manip_idx_grad_function = sym.lambdify((theta_1, theta_2, theta_3, theta_4), self._symbolic_manip_idx_gradient, 'numpy')
+        numeric_manip_idx_grad = manip_idx_grad_function(cmgs_theta[0], cmgs_theta[2], cmgs_theta[3], cmgs_theta[4])
+
+        return numeric_manip_idx_grad
 
     def _compute_symbolic_jacobian(self):
         
