@@ -6,6 +6,7 @@ sys.path.append(os.path.normpath(os.path.dirname(__file__) + os.sep + os.pardir)
 
 from envs.base_env import Environment
 from steering_algos.singularity_escape import SingularityRobustInverse
+from steering_algos.simple_steering import SimpleSteering
 
 
 # define simulation parameters
@@ -36,10 +37,9 @@ aoc_control_torque, cmga_jacobian, cmga_manip_idx = sim_env.reset(
     aoc_gains=aoc_gains,
 )
 
-
 alpha0 = 1
 ni = 0.002
-steering_algo = SingularityRobustInverse(
+sri_steering = SingularityRobustInverse(
     cmgs_availability=cmgs_availability,
     alpha0=alpha0,
     ni=ni
@@ -48,10 +48,42 @@ steering_algo = SingularityRobustInverse(
 
 for _ in range(1000):
     
-    cmgs_theta_dot_ref = steering_algo.get_cmgs_theta_dot_ref(
+    cmgs_theta_dot_ref = sri_steering.get_cmgs_theta_dot_ref(
         aoc_control_torque=aoc_control_torque,
         cmga_jacobian=cmga_jacobian,
         cmga_manip_idx=cmga_manip_idx
+    )
+    
+    aoc_control_torque, cmga_jacobian, cmga_manip_idx = sim_env.step(cmgs_theta_dot_ref)
+
+
+sim_env.plot_sim_data()
+
+
+sim_env = Environment()
+aoc_control_torque, cmga_jacobian, cmga_manip_idx = sim_env.reset(
+    cmgs_availability=cmgs_availability,
+    cmgs_beta=cmgs_beta,
+    cmgs_momenta=cmgs_momenta,
+    sc_quat_init=sc_quat_init,
+    sc_rate_init=sc_rate_init,
+    sc_quat_ref=sc_quat_ref,
+    sc_rate_ref=sc_rate_ref,
+    sc_moi=sc_moi,
+    time_step=time_step,
+    cmgs_theta_dot_max=cmgs_theta_dot_max,
+    aoc_gains=aoc_gains,
+)
+
+simple_steering = SimpleSteering(
+    cmgs_availability=cmgs_availability,
+)
+
+for _ in range(1000):
+    
+    cmgs_theta_dot_ref = simple_steering.get_cmgs_theta_dot_ref(
+        aoc_control_torque=aoc_control_torque,
+        cmga_jacobian=cmga_jacobian,
     )
     
     aoc_control_torque, cmga_jacobian, cmga_manip_idx = sim_env.step(cmgs_theta_dot_ref)
