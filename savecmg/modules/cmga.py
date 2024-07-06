@@ -1,31 +1,44 @@
 import numpy as np
 from scipy.optimize import fsolve
 from .cmg import ControlMomentGyro
+import sympy as sym
 
 # TODO: add another CMG configuration (object?)
 
+
 class ControlMomentGyroAssembly:
-    def __init__(self, cmgs_beta, cmgs_availability):
+    def __init__(
+        self, cmgs_beta, cmgs_availability, cmgs_momenta=[10.0, 10.0, 10.0, 10.0]
+    ):
         """
         Initializes a ControlMomentGyroAssembly object.
 
         Args:
             cmgs_beta (List[float]): A list of beta angles for the control moment gyroscopes [rad].
             cmgs_availability (List[bool]): A list of booleans indicating the availability of each control moment gyroscope.
+            cmgs_momenta (List[float], optional): A list of momenta for the control moment gyros [N]. Defaults to [10.0, 10.0, 10.0, 10.0].
 
         Returns:
             None
         """
 
+        # initialize parameters
         self.cmgs_beta = cmgs_beta
         self.cmgs_availability = cmgs_availability
+        self.cmgs_momenta = cmgs_momenta
         self.cmgs_array = None
         self.cmgs_theta = None
         self.cmgs_theta_dot = None
-        self.cmgs_momenta = None
-        self.jacobian = None
         self.angular_momentum = None
         self.torque = None
+        self.jacobian = None
+        self.manip_idx = None
+        self.manip_idx_gradient = None
+
+        # initialize symbolic functions
+        self._symbolic_jacobian = self._compute_symbolic_jacobian()
+        self._symbolic_manip_idx = self._compute_symbolic_manip_idx()
+        self._symbolic_manip_idx_gradient = self._compute_symbolic_manip_idx_gradient()
 
     def initialize_cmgs_array(
         self,
@@ -106,131 +119,66 @@ class ControlMomentGyroAssembly:
                     theta_dot_ref=cmgs_theta_dot_ref[idx], time_step=time_step
                 )
 
-                # update CMGs states
+                # get CMGs states
                 cmg_states = cmg.get_states()
                 cmgs_theta[idx] = cmg_states[0]
                 cmgs_theta_dot[idx] = cmg_states[1]
                 cmgs_momenta[idx] = cmg_states[2]
 
+        # update CMGs states
         self.cmgs_theta = cmgs_theta
         self.cmgs_theta_dot = cmgs_theta_dot
         self.cmgs_momenta = cmgs_momenta
 
-        # update jacobian, angular_momentum, and torque
-        self.jacobian = self.get_jacobian(self.cmgs_momenta, self.cmgs_theta)
-        self.angular_momentum = self.get_angular_momentum(
-            self.cmgs_theta, self.cmgs_momenta
-        )
-        self.torque = self.get_torque(self.cmgs_momenta, self.cmgs_theta_dot)
+        # update CMGA states
+        self.angular_momentum = self.get_angular_momentum()
+        self.torque = self.get_torque()
+        self.jacobian = self.get_jacobian()
+        self.manip_idx = self.get_manip_idx()
 
     def get_states(self):
         """
-        Returns a tuple containing the following CMGA states:
-        - `jacobian` (ndarray): Current CMGA jacobian matrix.
-        - `angular_momentum` (ndarray): Current CMGA angular momentum vector [Nms].
-        - `torque` (ndarray): Current CMGA torque vector [Nm].
-        - `cmgs_theta` (ndarray): Current theta angles of the CMGs array [rad].
-        - `cmgs_theta_dot` (ndarray): Current theta_dot velocities of the cCMGs array [rads].
+        Returns the current CMGA states.
 
         Returns:
-            tuple: A tuple containing the current CMGA states.
+            dict: A dictionary containing the current CMGA states.
         """
 
-        # update jacobian, angular_momentum, and torque
-        self.jacobian = self.get_jacobian(self.cmgs_momenta, self.cmgs_theta)
-        self.angular_momentum = self.get_angular_momentum(
-            self.cmgs_theta, self.cmgs_momenta
-        )
-        self.torque = self.get_torque(self.cmgs_momenta, self.cmgs_theta_dot)
+        # update CMGA states
+        self.angular_momentum = self.get_angular_momentum()
+        self.torque = self.get_torque()
+        self.jacobian = self.get_jacobian()
+        self.manip_idx = self.get_manip_idx()
 
-        return (
-            self.jacobian,
-            self.angular_momentum,
-            self.torque,
-            self.cmgs_theta,
-            self.cmgs_theta_dot,
+        states = dict(
+            cmgs_theta=self.cmgs_theta,
+            cmgs_theta_dot=self.cmgs_theta_dot,
+            cmgs_momenta=self.cmgs_momenta,
+            angular_momentum=self.angular_momentum,
+            torque=self.torque,
+            jacobian=self.jacobian,
+            manip_idx=self.manip_idx,
         )
 
-    def get_jacobian(self, cmgs_momenta, cmgs_theta):
+        return states
+
+    def get_angular_momentum(self, cmgs_theta=None):
         """
-        Computes the CMGA Jacobian matrix based on the given CMGs theta angles.
+        Computes the CMGA angular momentum in S/C body frame based on the given CMGs theta angles.
 
         Args:
             cmgs_theta (List[float]): A list of CMGs theta angles [rad].
-
-        Returns:
-            ndarray: The Jacobian matrix calculated based on the input angles.
-        """
-
-        # cmgs_momenta = np.delete(
-        #     cmgs_momenta,
-        #     np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
-        # ).tolist()
-
-        jacobian_elements = []
-
-        # compute jacobian matrix elements
-        if self.cmgs_availability[0]:
-            jacobian_elements.append(
-                cmgs_momenta[0] * np.array(
-                    [
-                        -np.cos(self.cmgs_beta[0]) * np.cos(cmgs_theta[0]),
-                        -np.sin(cmgs_theta[0]),
-                        np.sin(self.cmgs_beta[0]) * np.cos(cmgs_theta[0]),
-                    ]
-                )
-            )
-        if self.cmgs_availability[1]:
-            jacobian_elements.append(
-                cmgs_momenta[1] * np.array(
-                    [
-                        np.sin(cmgs_theta[1]),
-                        -np.cos(self.cmgs_beta[1]) * np.cos(cmgs_theta[1]),
-                        np.sin(self.cmgs_beta[1]) * np.cos(cmgs_theta[1]),
-                    ]
-                )
-            )
-        if self.cmgs_availability[2]:
-            jacobian_elements.append(
-                cmgs_momenta[2] * np.array(
-                    [
-                        np.cos(self.cmgs_beta[2]) * np.cos(cmgs_theta[2]),
-                        np.sin(cmgs_theta[2]),
-                        np.sin(self.cmgs_beta[2]) * np.cos(cmgs_theta[2]),
-                    ]
-                )
-            )
-        if self.cmgs_availability[3]:
-            jacobian_elements.append(
-                cmgs_momenta[3] * np.array(
-                    [
-                        -np.sin(cmgs_theta[3]),
-                        np.cos(self.cmgs_beta[3]) * np.cos(cmgs_theta[3]),
-                        np.sin(self.cmgs_beta[3]) * np.cos(cmgs_theta[3]),
-                    ]
-                )
-            )
-
-        # jacobian matrix is a 3xn matrix where n is the number of available CMGs (1<=n<=4)
-        jacobian = np.transpose(jacobian_elements)
-
-        return jacobian
-
-    def get_angular_momentum(self, cmgs_theta, cmgs_momenta):
-        """
-        Computes the CMGA angular momentum in S/C body frame based on the given CMGs theta angles and CMGs momenta.
-
-        Args:
-            cmgs_theta (List[float]): A list of CMGs theta angles [rad].
-            cmgs_momenta (List[float]): An array containing CMGs momenta [Nms].
 
         Returns:
             ndarray: CMGA angular momentum in S/C body frame [Nms].
         """
 
+        if not cmgs_theta:
+            cmgs_theta = self.cmgs_theta
+
         # remove useless CMGs momenta based on CMGs availability
         cmgs_momenta = np.delete(
-            cmgs_momenta,
+            self.cmgs_momenta,
             np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
         ).tolist()
 
@@ -283,24 +231,20 @@ class ControlMomentGyroAssembly:
 
         return angular_momentum
 
-    def get_torque(self, cmgs_momenta, cmgs_theta_dot):
+    def get_torque(self, cmgs_theta_dot=None):
         """
-        Computes the torque based on the given CMGs momenta, and CMGs theta_dot.
+        Computes the torque based on the given CMGs angular velocities.
 
         Args:
-            cmgs_momenta (List[float]): CMGs momenta array [Nms].
             cmgs_theta_dot (List[float]): CMGs angular velocities array [rads].
 
         Returns:
             CMGA Torque in S/C body frame [Nm].
         """
 
-        # remove useless CMGs momenta based on CMGs availability
-        cmgs_momenta = np.delete(
-            cmgs_momenta,
-            np.where(np.array(self.cmgs_availability) == False)[0],  # noqa: E712
-        ).tolist()
-
+        if not cmgs_theta_dot:
+            cmgs_theta_dot = self.cmgs_theta_dot
+            
         # remove useless CMGs theta_dot based on CMGs availability
         cmgs_theta_dot = np.delete(
             cmgs_theta_dot,
@@ -308,9 +252,219 @@ class ControlMomentGyroAssembly:
         ).tolist()
 
         # compute CMGA torque in S/C fixed frame
-        torque = np.dot(self.jacobian, cmgs_theta_dot)
+        torque = np.dot(np.array(self.jacobian, dtype=np.float32), cmgs_theta_dot)
 
         return torque
+
+    def get_jacobian(self, cmgs_theta=None):
+        """
+        Computes the CMGA Jacobian matrix based on the given CMGs theta angles.
+
+        Args:
+            cmgs_theta (List[float]): A list of CMGs theta angles [rad].
+
+        Returns:
+            ndarray: The Jacobian matrix calculated based on the input angles.
+        """
+
+        if not cmgs_theta:
+            cmgs_theta = self.cmgs_theta
+
+        jacobian_elements = []
+
+        # compute jacobian matrix elements
+        if self.cmgs_availability[0]:
+            jacobian_elements.append(
+                self.cmgs_momenta[0]
+                * np.array(
+                    [
+                        -np.cos(self.cmgs_beta[0]) * np.cos(cmgs_theta[0]),
+                        -np.sin(cmgs_theta[0]),
+                        np.sin(self.cmgs_beta[0]) * np.cos(cmgs_theta[0]),
+                    ]
+                )
+            )
+        if self.cmgs_availability[1]:
+            jacobian_elements.append(
+                self.cmgs_momenta[1]
+                * np.array(
+                    [
+                        np.sin(cmgs_theta[1]),
+                        -np.cos(self.cmgs_beta[1]) * np.cos(cmgs_theta[1]),
+                        np.sin(self.cmgs_beta[1]) * np.cos(cmgs_theta[1]),
+                    ]
+                )
+            )
+        if self.cmgs_availability[2]:
+            jacobian_elements.append(
+                self.cmgs_momenta[2]
+                * np.array(
+                    [
+                        np.cos(self.cmgs_beta[2]) * np.cos(cmgs_theta[2]),
+                        np.sin(cmgs_theta[2]),
+                        np.sin(self.cmgs_beta[2]) * np.cos(cmgs_theta[2]),
+                    ]
+                )
+            )
+        if self.cmgs_availability[3]:
+            jacobian_elements.append(
+                self.cmgs_momenta[3]
+                * np.array(
+                    [
+                        -np.sin(cmgs_theta[3]),
+                        np.cos(self.cmgs_beta[3]) * np.cos(cmgs_theta[3]),
+                        np.sin(self.cmgs_beta[3]) * np.cos(cmgs_theta[3]),
+                    ]
+                )
+            )
+
+        # jacobian matrix is a 3xn matrix where n is the number of available CMGs (1<=n<=4)
+        jacobian = np.transpose(jacobian_elements)
+
+        return jacobian
+
+    def _get_jacobian(self, cmgs_theta):
+
+        theta_1 = sym.Symbol("theta_1")
+        theta_2 = sym.Symbol("theta_2")
+        theta_3 = sym.Symbol("theta_3")
+        theta_4 = sym.Symbol("theta_4")
+
+        jacobian_function = sym.lambdify(
+            (theta_1, theta_2, theta_3, theta_4), self._symbolic_jacobian, "numpy"
+        )
+        numeric_jacobian = jacobian_function(
+            cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
+        )
+
+        return numeric_jacobian
+
+    def get_manip_idx(self):
+
+        manip_idx = np.sqrt(np.abs(np.linalg.det(np.dot(self.jacobian, self.jacobian.T))))
+
+        return manip_idx
+
+    def _get_manip_idx(self, cmgs_theta=None):
+
+        if not cmgs_theta:
+            cmgs_theta = self.cmgs_theta
+
+        theta_1 = sym.Symbol("theta_1")
+        theta_2 = sym.Symbol("theta_2")
+        theta_3 = sym.Symbol("theta_3")
+        theta_4 = sym.Symbol("theta_4")
+
+        manip_idx_function = sym.lambdify(
+            (theta_1, theta_2, theta_3, theta_4), self._symbolic_manip_idx, "numpy"
+        )
+        numeric_manip_idx = manip_idx_function(
+            cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
+        )
+
+        return numeric_manip_idx
+
+    def get_manip_idx_gradient(self, cmgs_theta=None):
+
+        if not cmgs_theta:
+            cmgs_theta = self.cmgs_theta
+
+        theta_1 = sym.Symbol("theta_1")
+        theta_2 = sym.Symbol("theta_2")
+        theta_3 = sym.Symbol("theta_3")
+        theta_4 = sym.Symbol("theta_4")
+
+        manip_idx_grad_function = sym.lambdify(
+            (theta_1, theta_2, theta_3, theta_4),
+            self._symbolic_manip_idx_gradient,
+            "numpy",
+        )
+        numeric_manip_idx_grad = manip_idx_grad_function(
+            cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
+        )
+
+        return numeric_manip_idx_grad
+
+    def _compute_symbolic_jacobian(self):
+
+        theta_1 = sym.Symbol("theta_1")
+        theta_2 = sym.Symbol("theta_2")
+        theta_3 = sym.Symbol("theta_3")
+        theta_4 = sym.Symbol("theta_4")
+
+        jacobian_elements = []
+
+        # compute jacobian matrix elements
+        if self.cmgs_availability[0]:
+            jacobian_elements.append(
+                self.cmgs_momenta[0]
+                * np.array(
+                    [
+                        -np.cos(self.cmgs_beta[0]) * sym.cos(theta_1),
+                        -sym.sin(theta_1),
+                        np.sin(self.cmgs_beta[0]) * sym.cos(theta_1),
+                    ]
+                )
+            )
+        if self.cmgs_availability[1]:
+            jacobian_elements.append(
+                self.cmgs_momenta[1]
+                * np.array(
+                    [
+                        sym.sin(theta_2),
+                        -np.cos(self.cmgs_beta[1]) * sym.cos(theta_2),
+                        np.sin(self.cmgs_beta[1]) * sym.cos(theta_2),
+                    ]
+                )
+            )
+        if self.cmgs_availability[2]:
+            jacobian_elements.append(
+                self.cmgs_momenta[2]
+                * np.array(
+                    [
+                        np.cos(self.cmgs_beta[2]) * sym.cos(theta_3),
+                        sym.sin(theta_3),
+                        np.sin(self.cmgs_beta[2]) * sym.cos(theta_3),
+                    ]
+                )
+            )
+        if self.cmgs_availability[3]:
+            jacobian_elements.append(
+                self.cmgs_momenta[3]
+                * np.array(
+                    [
+                        -sym.sin(theta_4),
+                        np.cos(self.cmgs_beta[3]) * sym.cos(theta_4),
+                        np.sin(self.cmgs_beta[3]) * sym.cos(theta_4),
+                    ]
+                )
+            )
+
+        # jacobian matrix is a 3xn matrix where n is the number of available CMGs (1<=n<=4)
+        symbolic_jacobian = sym.Matrix(np.transpose(jacobian_elements))
+
+        return symbolic_jacobian
+
+    def _compute_symbolic_manip_idx(self):
+
+        jacobian_det = sym.Matrix(
+            np.dot(self._symbolic_jacobian, self._symbolic_jacobian.T)
+        ).det()
+        symbolic_manip_idx = sym.sqrt(sym.sqrt((jacobian_det) ** 2))
+
+        return symbolic_manip_idx
+
+    def _compute_symbolic_manip_idx_gradient(self):
+
+        theta_1 = sym.Symbol("theta_1")
+        theta_2 = sym.Symbol("theta_2")
+        theta_3 = sym.Symbol("theta_3")
+        theta_4 = sym.Symbol("theta_4")
+
+        symbolic_theta = sym.Array([theta_1, theta_2, theta_3, theta_4])
+        manip_idx_gradient = -sym.diff(self._symbolic_manip_idx**2, symbolic_theta)
+
+        return manip_idx_gradient
 
     def _compute_cmgs_theta_zero_momentum(self):
 
@@ -320,22 +474,28 @@ class ControlMomentGyroAssembly:
             initial_guess = [0, 0, 0]
         elif sum(self.cmgs_availability) == 4:
             return [0, 0, 0, 0]
-        
-        solution = iter(fsolve(self.__zero_momentum_equations, initial_guess, args=(self.cmgs_beta, self.cmgs_availability)))
-        
+
+        solution = iter(
+            fsolve(
+                self.__zero_momentum_equations,
+                initial_guess,
+                args=(self.cmgs_beta, self.cmgs_availability),
+            )
+        )
+
         theta = list()
         for cmg in self.cmgs_availability:
             if cmg:
                 theta.append(next(solution))
             else:
                 theta.append(0)
-        
+
         return theta
-        
+
     def __zero_momentum_equations(self, vars, beta, cmgs_availability):
 
         match cmgs_availability:
-            
+
             # 4 CMGs
             case [True, True, True, True]:
                 k = [1, 1, 1, 1]
@@ -390,15 +550,28 @@ class ControlMomentGyroAssembly:
                 theta_2 = 0
                 theta_3, theta_4 = vars
 
-        eq_1 = -k[0] * np.cos(beta[0]) * np.sin(theta_1) - k[1] * np.cos(theta_2) + k[2] * np.cos(beta[2]) * np.sin(theta_3) + k[3] * np.cos(theta_4)
-        eq_2 = k[0] * np.cos(theta_1) - k[1] * np.cos(beta[1]) * np.sin(theta_2) - k[2] * np.cos(theta_3) + k[3] * np.cos(beta[3]) * np.sin(theta_4)
-        eq_3 = k[0] * np.sin(beta[0]) * np.sin(theta_1) + k[1] * np.sin(beta[1]) * np.sin(theta_2) + k[2] * np.sin(beta[2]) * np.sin(theta_3) + k[3] * np.sin(beta[3]) * np.sin(theta_4)
-        
+        eq_1 = (
+            -k[0] * np.cos(beta[0]) * np.sin(theta_1)
+            - k[1] * np.cos(theta_2)
+            + k[2] * np.cos(beta[2]) * np.sin(theta_3)
+            + k[3] * np.cos(theta_4)
+        )
+        eq_2 = (
+            k[0] * np.cos(theta_1)
+            - k[1] * np.cos(beta[1]) * np.sin(theta_2)
+            - k[2] * np.cos(theta_3)
+            + k[3] * np.cos(beta[3]) * np.sin(theta_4)
+        )
+        eq_3 = (
+            k[0] * np.sin(beta[0]) * np.sin(theta_1)
+            + k[1] * np.sin(beta[1]) * np.sin(theta_2)
+            + k[2] * np.sin(beta[2]) * np.sin(theta_3)
+            + k[3] * np.sin(beta[3]) * np.sin(theta_4)
+        )
+
         if sum(k) == 2:
             eqs = [eq_1, eq_2]
         else:
             eqs = [eq_1, eq_2, eq_3]
-        
+
         return eqs
-    
-    
