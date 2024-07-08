@@ -381,8 +381,8 @@ class ControlMomentGyroAssembly:
             if self.manip_idx is None or self.cmgs_theta is None:
                 manip_idx_grad = np.array([0, 0, 0, 0])
             else:
-                epsilon = 0.01
-                delta_manip_idx = - ((manip_idx_1 ** 1/7 - manip_idx_0 ** 1/7) ** 2)
+                epsilon = 0.0001
+                delta_manip_idx = - (manip_idx_1 ** 1/7 - manip_idx_0 ** 1/7)
                 delta_theta = np.array(
                     [
                         abs(cmgs_theta_1[0] - cmgs_theta_0[0]) + epsilon,
@@ -392,12 +392,9 @@ class ControlMomentGyroAssembly:
                     ]
                 )
 
-                # print(delta_manip_idx)
-                # print(delta_theta)
-
                 manip_idx_grad = delta_manip_idx / delta_theta
-
-                manip_idx_grad = np.where(manip_idx_grad < 0, 0, manip_idx_grad)
+                # manip_idx_grad = np.where(delta_manip_idx < 0, 0, delta_manip_idx / delta_theta)
+                # print(delta_manip_idx, delta_theta, manip_idx_grad)
 
         else:
 
