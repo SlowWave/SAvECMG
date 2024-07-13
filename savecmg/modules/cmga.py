@@ -33,7 +33,7 @@ class ControlMomentGyroAssembly:
         self.torque = None
         self.jacobian = None
         self.manip_idx = None
-        self.manip_idx_gradient = None
+        self.manip_idx_gradient = np.array([0, 0, 0, 0])
 
         # initialize symbolic functions
         self._symbolic_jacobian = self._compute_symbolic_jacobian()
@@ -125,6 +125,11 @@ class ControlMomentGyroAssembly:
                 cmgs_theta_dot[idx] = cmg_states[1]
                 cmgs_momenta[idx] = cmg_states[2]
 
+        #
+        cmgs_theta_0 = np.copy(self.cmgs_theta)
+        cmgs_theta_1 = np.copy(cmgs_theta)
+        manip_idx_0 = np.copy(self.manip_idx)
+
         # update CMGs states
         self.cmgs_theta = cmgs_theta
         self.cmgs_theta_dot = cmgs_theta_dot
@@ -135,6 +140,9 @@ class ControlMomentGyroAssembly:
         self.torque = self.get_torque()
         self.jacobian = self.get_jacobian()
         self.manip_idx = self.get_manip_idx()
+        
+        manip_idx_1 = np.copy(self.manip_idx)
+        self.manip_idx_gradient = self.get_manip_idx_gradient(manip_idx_0, manip_idx_1, cmgs_theta_0, cmgs_theta_1)
 
     def get_states(self):
         """
@@ -158,6 +166,7 @@ class ControlMomentGyroAssembly:
             torque=self.torque,
             jacobian=self.jacobian,
             manip_idx=self.manip_idx,
+            manip_idx_gradient=self.manip_idx_gradient,
         )
 
         return states
@@ -244,7 +253,7 @@ class ControlMomentGyroAssembly:
 
         if not cmgs_theta_dot:
             cmgs_theta_dot = self.cmgs_theta_dot
-            
+
         # remove useless CMGs theta_dot based on CMGs availability
         cmgs_theta_dot = np.delete(
             cmgs_theta_dot,
@@ -256,7 +265,7 @@ class ControlMomentGyroAssembly:
 
         return torque
 
-    def get_jacobian(self, cmgs_theta=None):
+    def get_jacobian(self, symbolic=False, cmgs_theta=None):
         """
         Computes the CMGA Jacobian matrix based on the given CMGs theta angles.
 
@@ -267,123 +276,149 @@ class ControlMomentGyroAssembly:
             ndarray: The Jacobian matrix calculated based on the input angles.
         """
 
-        if not cmgs_theta:
-            cmgs_theta = self.cmgs_theta
+        if not symbolic:
 
-        jacobian_elements = []
+            if not cmgs_theta:
+                cmgs_theta = self.cmgs_theta
 
-        # compute jacobian matrix elements
-        if self.cmgs_availability[0]:
-            jacobian_elements.append(
-                self.cmgs_momenta[0]
-                * np.array(
-                    [
-                        -np.cos(self.cmgs_beta[0]) * np.cos(cmgs_theta[0]),
-                        -np.sin(cmgs_theta[0]),
-                        np.sin(self.cmgs_beta[0]) * np.cos(cmgs_theta[0]),
-                    ]
-                )
-            )
-        if self.cmgs_availability[1]:
-            jacobian_elements.append(
-                self.cmgs_momenta[1]
-                * np.array(
-                    [
-                        np.sin(cmgs_theta[1]),
-                        -np.cos(self.cmgs_beta[1]) * np.cos(cmgs_theta[1]),
-                        np.sin(self.cmgs_beta[1]) * np.cos(cmgs_theta[1]),
-                    ]
-                )
-            )
-        if self.cmgs_availability[2]:
-            jacobian_elements.append(
-                self.cmgs_momenta[2]
-                * np.array(
-                    [
-                        np.cos(self.cmgs_beta[2]) * np.cos(cmgs_theta[2]),
-                        np.sin(cmgs_theta[2]),
-                        np.sin(self.cmgs_beta[2]) * np.cos(cmgs_theta[2]),
-                    ]
-                )
-            )
-        if self.cmgs_availability[3]:
-            jacobian_elements.append(
-                self.cmgs_momenta[3]
-                * np.array(
-                    [
-                        -np.sin(cmgs_theta[3]),
-                        np.cos(self.cmgs_beta[3]) * np.cos(cmgs_theta[3]),
-                        np.sin(self.cmgs_beta[3]) * np.cos(cmgs_theta[3]),
-                    ]
-                )
-            )
+            jacobian_elements = []
 
-        # jacobian matrix is a 3xn matrix where n is the number of available CMGs (1<=n<=4)
-        jacobian = np.transpose(jacobian_elements)
+            # compute jacobian matrix elements
+            if self.cmgs_availability[0]:
+                jacobian_elements.append(
+                    self.cmgs_momenta[0]
+                    * np.array(
+                        [
+                            -np.cos(self.cmgs_beta[0]) * np.cos(cmgs_theta[0]),
+                            -np.sin(cmgs_theta[0]),
+                            np.sin(self.cmgs_beta[0]) * np.cos(cmgs_theta[0]),
+                        ]
+                    )
+                )
+            if self.cmgs_availability[1]:
+                jacobian_elements.append(
+                    self.cmgs_momenta[1]
+                    * np.array(
+                        [
+                            np.sin(cmgs_theta[1]),
+                            -np.cos(self.cmgs_beta[1]) * np.cos(cmgs_theta[1]),
+                            np.sin(self.cmgs_beta[1]) * np.cos(cmgs_theta[1]),
+                        ]
+                    )
+                )
+            if self.cmgs_availability[2]:
+                jacobian_elements.append(
+                    self.cmgs_momenta[2]
+                    * np.array(
+                        [
+                            np.cos(self.cmgs_beta[2]) * np.cos(cmgs_theta[2]),
+                            np.sin(cmgs_theta[2]),
+                            np.sin(self.cmgs_beta[2]) * np.cos(cmgs_theta[2]),
+                        ]
+                    )
+                )
+            if self.cmgs_availability[3]:
+                jacobian_elements.append(
+                    self.cmgs_momenta[3]
+                    * np.array(
+                        [
+                            -np.sin(cmgs_theta[3]),
+                            np.cos(self.cmgs_beta[3]) * np.cos(cmgs_theta[3]),
+                            np.sin(self.cmgs_beta[3]) * np.cos(cmgs_theta[3]),
+                        ]
+                    )
+                )
+
+            # jacobian matrix is a 3xn matrix where n is the number of available CMGs (1<=n<=4)
+            jacobian = np.transpose(jacobian_elements)
+
+        else:
+
+            theta_1 = sym.Symbol("theta_1")
+            theta_2 = sym.Symbol("theta_2")
+            theta_3 = sym.Symbol("theta_3")
+            theta_4 = sym.Symbol("theta_4")
+
+            jacobian_function = sym.lambdify(
+                (theta_1, theta_2, theta_3, theta_4), self._symbolic_jacobian, "numpy"
+            )
+            jacobian = jacobian_function(
+                cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
+            )
 
         return jacobian
 
-    def _get_jacobian(self, cmgs_theta):
+    def get_manip_idx(self, symbolic=False, cmgs_theta=None):
 
-        theta_1 = sym.Symbol("theta_1")
-        theta_2 = sym.Symbol("theta_2")
-        theta_3 = sym.Symbol("theta_3")
-        theta_4 = sym.Symbol("theta_4")
+        if not symbolic:
 
-        jacobian_function = sym.lambdify(
-            (theta_1, theta_2, theta_3, theta_4), self._symbolic_jacobian, "numpy"
-        )
-        numeric_jacobian = jacobian_function(
-            cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
-        )
+            manip_idx = np.sqrt(
+                np.abs(np.linalg.det(np.dot(self.jacobian, self.jacobian.T)))
+            )
 
-        return numeric_jacobian
+        else:
 
-    def get_manip_idx(self):
+            if not cmgs_theta:
+                cmgs_theta = self.cmgs_theta
 
-        manip_idx = np.sqrt(np.abs(np.linalg.det(np.dot(self.jacobian, self.jacobian.T))))
+            theta_1 = sym.Symbol("theta_1")
+            theta_2 = sym.Symbol("theta_2")
+            theta_3 = sym.Symbol("theta_3")
+            theta_4 = sym.Symbol("theta_4")
+
+            manip_idx_function = sym.lambdify(
+                (theta_1, theta_2, theta_3, theta_4), self._symbolic_manip_idx, "numpy"
+            )
+            manip_idx = manip_idx_function(
+                cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
+            )
 
         return manip_idx
 
-    def _get_manip_idx(self, cmgs_theta=None):
+    def get_manip_idx_gradient(self, manip_idx_0=None, manip_idx_1=None, cmgs_theta_0=None, cmgs_theta_1=None, symbolic=False):
 
-        if not cmgs_theta:
-            cmgs_theta = self.cmgs_theta
+        if not symbolic:
 
-        theta_1 = sym.Symbol("theta_1")
-        theta_2 = sym.Symbol("theta_2")
-        theta_3 = sym.Symbol("theta_3")
-        theta_4 = sym.Symbol("theta_4")
+            if self.manip_idx is None or self.cmgs_theta is None:
+                manip_idx_grad = np.array([0, 0, 0, 0])
+            else:
+                epsilon = 0.0001
+                delta_manip_idx = - (manip_idx_1 ** 1/7 - manip_idx_0 ** 1/7)
+                delta_theta = np.array(
+                    [
+                        abs(cmgs_theta_1[0] - cmgs_theta_0[0]) + epsilon,
+                        abs(cmgs_theta_1[1] - cmgs_theta_0[1]) + epsilon,
+                        abs(cmgs_theta_1[2] - cmgs_theta_0[2]) + epsilon,
+                        abs(cmgs_theta_1[3] - cmgs_theta_0[3]) + epsilon,
+                    ]
+                )
 
-        manip_idx_function = sym.lambdify(
-            (theta_1, theta_2, theta_3, theta_4), self._symbolic_manip_idx, "numpy"
-        )
-        numeric_manip_idx = manip_idx_function(
-            cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
-        )
+                manip_idx_grad = delta_manip_idx / delta_theta
+                # manip_idx_grad = np.where(delta_manip_idx < 0, 0, delta_manip_idx / delta_theta)
+                # print(delta_manip_idx, delta_theta, manip_idx_grad)
 
-        return numeric_manip_idx
+        else:
 
-    def get_manip_idx_gradient(self, cmgs_theta=None):
+            if not cmgs_theta_1:
+                cmgs_theta = self.cmgs_theta
+            else:
+                cmgs_theta = cmgs_theta_1
 
-        if not cmgs_theta:
-            cmgs_theta = self.cmgs_theta
+            theta_1 = sym.Symbol("theta_1")
+            theta_2 = sym.Symbol("theta_2")
+            theta_3 = sym.Symbol("theta_3")
+            theta_4 = sym.Symbol("theta_4")
 
-        theta_1 = sym.Symbol("theta_1")
-        theta_2 = sym.Symbol("theta_2")
-        theta_3 = sym.Symbol("theta_3")
-        theta_4 = sym.Symbol("theta_4")
+            manip_idx_grad_function = sym.lambdify(
+                (theta_1, theta_2, theta_3, theta_4),
+                self._symbolic_manip_idx_gradient,
+                "numpy",
+            )
+            manip_idx_grad = manip_idx_grad_function(
+                cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
+            )
 
-        manip_idx_grad_function = sym.lambdify(
-            (theta_1, theta_2, theta_3, theta_4),
-            self._symbolic_manip_idx_gradient,
-            "numpy",
-        )
-        numeric_manip_idx_grad = manip_idx_grad_function(
-            cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
-        )
-
-        return numeric_manip_idx_grad
+        return manip_idx_grad
 
     def _compute_symbolic_jacobian(self):
 
