@@ -166,6 +166,7 @@ class ControlMomentGyroAssembly:
             torque=self.torque,
             jacobian=self.jacobian,
             manip_idx=self.manip_idx,
+            manip_idx_gradient=self.manip_idx_gradient,
         )
 
         return states
