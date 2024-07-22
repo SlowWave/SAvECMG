@@ -87,11 +87,11 @@ class Environment:
         self.sim_data["cmga_torque"].append(cmga_states["torque"])
         self.sim_data["cmga_jacobian"].append(cmga_states["jacobian"])
         self.sim_data["cmga_manip_idx"].append(cmga_states["manip_idx"])
-        self.sim_data["cmga_manip_idx_grad"].append(cmga_states["manip_idx_gradent"])
+        self.sim_data["cmga_manip_idx_grad"].append(cmga_states["manip_idx_gradient"])
         self.sim_data["cmgs_theta"].append(cmga_states["cmgs_theta"])
         self.sim_data["cmgs_theta_dot"].append(cmga_states["cmgs_theta_dot"])
 
-        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"], cmga_states["manip_idx_gradent"]
+        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"], cmga_states["manip_idx_gradient"]
 
         return observation
 
@@ -122,11 +122,11 @@ class Environment:
         self.sim_data["cmga_torque"].append(cmga_states["torque"])
         self.sim_data["cmga_jacobian"].append(cmga_states["jacobian"])
         self.sim_data["cmga_manip_idx"].append(cmga_states["manip_idx"])
-        self.sim_data["cmga_manip_idx_grad"].append(cmga_states["manip_idx_gradent"])
+        self.sim_data["cmga_manip_idx_grad"].append(cmga_states["manip_idx_gradient"])
         self.sim_data["cmgs_theta"].append(cmga_states["cmgs_theta"])
         self.sim_data["cmgs_theta_dot"].append(cmga_states["cmgs_theta_dot"])
 
-        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"], cmga_states["manip_idx_gradent"]
+        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"], cmga_states["manip_idx_gradient"]
 
         return observation
 
