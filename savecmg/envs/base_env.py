@@ -33,6 +33,7 @@ class Environment:
             "cmga_torque": list(),
             "cmga_jacobian": list(),
             "cmga_manip_idx": list(),
+            "cmga_manip_idx_grad": list(),
             "cmgs_theta": list(),
             "cmgs_theta_dot": list(),
         }
@@ -42,14 +43,14 @@ class Environment:
         cmgs_availability=[False, True, True, True],
         cmgs_beta=[0, 0, 45, 90],
         cmgs_momenta=[10, 10, 10, 10],
+        cmgs_theta_dot_max=[1.5, 1.5, 1.5, 1.5],
         sc_quat_init=[1, 0, 0, 0],
         sc_rate_init=[0, 0, 0],
+        sc_moi=500,
         sc_quat_ref=[0, 0, 0, 1],
         sc_rate_ref=[0, 0, 0],
-        sc_moi=500,
-        time_step=0.5,
-        cmgs_theta_dot_max=[1.5, 1.5, 1.5, 1.5],
         aoc_gains=[1, 10],
+        time_step=0.5,
     ):
 
         self.cmgs_availability = cmgs_availability
@@ -86,10 +87,11 @@ class Environment:
         self.sim_data["cmga_torque"].append(cmga_states["torque"])
         self.sim_data["cmga_jacobian"].append(cmga_states["jacobian"])
         self.sim_data["cmga_manip_idx"].append(cmga_states["manip_idx"])
+        self.sim_data["cmga_manip_idx_grad"].append(cmga_states["manip_idx_gradent"])
         self.sim_data["cmgs_theta"].append(cmga_states["cmgs_theta"])
         self.sim_data["cmgs_theta_dot"].append(cmga_states["cmgs_theta_dot"])
 
-        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"]
+        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"], cmga_states["manip_idx_gradent"]
 
         return observation
 
@@ -120,10 +122,11 @@ class Environment:
         self.sim_data["cmga_torque"].append(cmga_states["torque"])
         self.sim_data["cmga_jacobian"].append(cmga_states["jacobian"])
         self.sim_data["cmga_manip_idx"].append(cmga_states["manip_idx"])
+        self.sim_data["cmga_manip_idx_grad"].append(cmga_states["manip_idx_gradent"])
         self.sim_data["cmgs_theta"].append(cmga_states["cmgs_theta"])
         self.sim_data["cmgs_theta_dot"].append(cmga_states["cmgs_theta_dot"])
 
-        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"]
+        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"], cmga_states["manip_idx_gradent"]
 
         return observation
 
