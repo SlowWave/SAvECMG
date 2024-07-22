@@ -41,9 +41,22 @@ class ControlMomentGyroAssembly:
         self.use_symbolic_functions = use_symbolic_functions
 
         # initialize symbolic functions
+        theta_1 = sym.Symbol("theta_1")
+        theta_2 = sym.Symbol("theta_2")
+        theta_3 = sym.Symbol("theta_3")
+        theta_4 = sym.Symbol("theta_4")
         self._symbolic_jacobian = self._compute_symbolic_jacobian()
         self._symbolic_manip_idx = self._compute_symbolic_manip_idx()
         self._symbolic_manip_idx_gradient = self._compute_symbolic_manip_idx_gradient()
+        self._symbolic_jacobian_fun = sym.lambdify(
+            (theta_1, theta_2, theta_3, theta_4), self._symbolic_jacobian, "numpy"
+        )
+        self._symbolic_manip_idx_fun = sym.lambdify(
+            (theta_1, theta_2, theta_3, theta_4), self._symbolic_manip_idx, "numpy"
+        )
+        self._symbolic_manip_idx_gradient_fun = sym.lambdify(
+            (theta_1, theta_2, theta_3, theta_4), self._symbolic_manip_idx_gradient, "numpy"
+        )
 
     def initialize_cmgs_array(
         self,
@@ -345,15 +358,7 @@ class ControlMomentGyroAssembly:
 
         else:
 
-            theta_1 = sym.Symbol("theta_1")
-            theta_2 = sym.Symbol("theta_2")
-            theta_3 = sym.Symbol("theta_3")
-            theta_4 = sym.Symbol("theta_4")
-
-            jacobian_function = sym.lambdify(
-                (theta_1, theta_2, theta_3, theta_4), self._symbolic_jacobian, "numpy"
-            )
-            jacobian = jacobian_function(
+            jacobian = self._symbolic_jacobian_fun(
                 cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
             )
 
@@ -372,15 +377,7 @@ class ControlMomentGyroAssembly:
             if not cmgs_theta:
                 cmgs_theta = self.cmgs_theta
 
-            theta_1 = sym.Symbol("theta_1")
-            theta_2 = sym.Symbol("theta_2")
-            theta_3 = sym.Symbol("theta_3")
-            theta_4 = sym.Symbol("theta_4")
-
-            manip_idx_function = sym.lambdify(
-                (theta_1, theta_2, theta_3, theta_4), self._symbolic_manip_idx, "numpy"
-            )
-            manip_idx = manip_idx_function(
+            manip_idx = self._symbolic_manip_idx_fun(
                 cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
             )
 
@@ -415,17 +412,7 @@ class ControlMomentGyroAssembly:
         else:
             cmgs_theta = self.cmgs_theta
 
-            theta_1 = sym.Symbol("theta_1")
-            theta_2 = sym.Symbol("theta_2")
-            theta_3 = sym.Symbol("theta_3")
-            theta_4 = sym.Symbol("theta_4")
-
-            manip_idx_grad_function = sym.lambdify(
-                (theta_1, theta_2, theta_3, theta_4),
-                self._symbolic_manip_idx_gradient,
-                "numpy",
-            )
-            manip_idx_grad = manip_idx_grad_function(
+            manip_idx_grad = self._symbolic_manip_idx_gradient_fun(
                 cmgs_theta[0], cmgs_theta[1], cmgs_theta[2], cmgs_theta[3]
             )
 
