@@ -237,6 +237,23 @@ class Environment:
                 )
             fig.show()
 
+        # CMGA angular momentum
+        if plot_cmga_angular_momentum:
+            fig = go.Figure()
+            fig.update_layout(
+                title="CMGA angular momentum", xaxis_title="time [s]", yaxis_title="angular_momentum [Nms]"
+            )
+            for idx in range(3):
+                fig.add_trace(
+                    go.Scatter(
+                        x=self.sim_data["time"],
+                        y=[row[idx] for row in self.sim_data["cmga_angular_momentum"]],
+                        name="angular_momentum_{}".format(idx),
+                        line=dict(color=color_palette[idx % len(color_palette)]),
+                    )
+                )
+            fig.show()
+
         # CMGA manip_idx
         if plot_cmga_manip_idx:
             fig = go.Figure()
