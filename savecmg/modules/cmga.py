@@ -8,7 +8,11 @@ import sympy as sym
 
 class ControlMomentGyroAssembly:
     def __init__(
-        self, cmgs_beta, cmgs_availability, cmgs_momenta=[10.0, 10.0, 10.0, 10.0]
+        self,
+        cmgs_beta,
+        cmgs_availability,
+        cmgs_momenta=[10.0, 10.0, 10.0, 10.0],
+        use_symbolic_functions=False,
     ):
         """
         Initializes a ControlMomentGyroAssembly object.
@@ -34,6 +38,7 @@ class ControlMomentGyroAssembly:
         self.jacobian = None
         self.manip_idx = None
         self.manip_idx_gradient = np.array([0, 0, 0, 0])
+        self.use_symbolic_functions = use_symbolic_functions
 
         # initialize symbolic functions
         self._symbolic_jacobian = self._compute_symbolic_jacobian()
@@ -138,11 +143,17 @@ class ControlMomentGyroAssembly:
         # update CMGA states
         self.angular_momentum = self.get_angular_momentum()
         self.torque = self.get_torque()
-        self.jacobian = self.get_jacobian()
-        self.manip_idx = self.get_manip_idx()
+        self.jacobian = self.get_jacobian(symbolic=self.use_symbolic_functions)
+        self.manip_idx = self.get_manip_idx(symbolic=self.use_symbolic_functions)
         
         manip_idx_1 = np.copy(self.manip_idx)
-        self.manip_idx_gradient = self.get_manip_idx_gradient(manip_idx_0, manip_idx_1, cmgs_theta_0, cmgs_theta_1)
+        self.manip_idx_gradient = self.get_manip_idx_gradient(
+            symbolic=self.use_symbolic_functions,
+            manip_idx_0=manip_idx_0,
+            manip_idx_1=manip_idx_1,
+            cmgs_theta_0=cmgs_theta_0,
+            cmgs_theta_1=cmgs_theta_1
+        )
 
     def get_states(self):
         """
@@ -276,10 +287,10 @@ class ControlMomentGyroAssembly:
             ndarray: The Jacobian matrix calculated based on the input angles.
         """
 
-        if not symbolic:
+        if not cmgs_theta:
+            cmgs_theta = self.cmgs_theta
 
-            if not cmgs_theta:
-                cmgs_theta = self.cmgs_theta
+        if not symbolic:
 
             jacobian_elements = []
 
@@ -375,7 +386,7 @@ class ControlMomentGyroAssembly:
 
         return manip_idx
 
-    def get_manip_idx_gradient(self, manip_idx_0=None, manip_idx_1=None, cmgs_theta_0=None, cmgs_theta_1=None, symbolic=False):
+    def get_manip_idx_gradient(self, symbolic=False, manip_idx_0=None, manip_idx_1=None, cmgs_theta_0=None, cmgs_theta_1=None):
 
         if not symbolic:
 
@@ -402,11 +413,7 @@ class ControlMomentGyroAssembly:
                 # print(delta_manip_idx, delta_theta, manip_idx_grad)
 
         else:
-
-            if not cmgs_theta_1:
-                cmgs_theta = self.cmgs_theta
-            else:
-                cmgs_theta = cmgs_theta_1
+            cmgs_theta = self.cmgs_theta
 
             theta_1 = sym.Symbol("theta_1")
             theta_2 = sym.Symbol("theta_2")
