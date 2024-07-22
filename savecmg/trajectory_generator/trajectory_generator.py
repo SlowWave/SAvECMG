@@ -78,7 +78,7 @@ class TrajectoryGenerator():
         pos_prec = self.pos_0
         time_prec = 0
         vel_prec = 0
-        time = 0
+        time = self.sample_time
         t_1 = 0
         pos_1 = 0
         vel_1 = 0
@@ -93,10 +93,12 @@ class TrajectoryGenerator():
             acc = acc_max[i]
             delta_pos = pos_fin[i] - pos_prec
             vel_sign = np.sign(delta_pos)
+            int_value = 0
 
 
             if abs(delta_pos) < abs(acc*(vel[i] / acc)**2):
                 vel[i] =  vel_sign * np.sqrt(abs(acc*delta_pos))
+                int_value = 1
             # Compute the acceleration interval
             t_acc1 = abs(vel[i] / acc)
             # Compute the space during the acceleration
@@ -110,9 +112,9 @@ class TrajectoryGenerator():
             t_acc2 = t_acc1 + t_vel    
             t_tot = t_acc1 + t_acc2  
 
-            n_samples_wait = round(stop_time[i]/self.sample_time)
+            n_samples_wait = int(stop_time[i]/self.sample_time)
 
-            n_sample_trajectory = round(t_tot/self.sample_time)+1
+            n_sample_trajectory = int(t_tot/self.sample_time) 
             # Allocate samples to waiting time
             
             for _ in range(n_samples_wait):
@@ -254,8 +256,8 @@ class TrajectoryGenerator():
         
 if __name__== "__main__":
     stop_time = [0,0]
-    ref = [0.2]   
-    vel = [2,2]
+    ref = [0.4,0.2]   
+    vel = [0.1,2]
     acc = [0.1,0.1]
     generator = TrajectoryGenerator(0,1/32)  
     trajectory = generator.trapezoidal_velocity(ref,vel,acc,stop_time)
