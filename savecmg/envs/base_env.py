@@ -137,6 +137,7 @@ class Environment:
         plot_cmga_torque=True,
         plot_cmga_angular_momentum=True,
         plot_cmga_manip_idx=True,
+        plot_cmga_manip_idx_gradient=True,
         plot_cmgs_theta=True,
         plot_cmgs_theta_dot=True,
     ):
@@ -268,6 +269,23 @@ class Environment:
                     line=dict(color=color_palette[0]),
                 )
             )
+            fig.show()
+            
+        # CMGA manip_idx_gradinent
+        if plot_cmga_manip_idx_gradient:
+            fig = go.Figure()
+            fig.update_layout(
+                title="CMGA manip_idx_gradient", xaxis_title="time [s]", yaxis_title="manip_idx_gradient"
+            )
+            for idx in range(4):
+                fig.add_trace(
+                    go.Scatter(
+                        x=self.sim_data["time"],
+                        y=[row[idx] for row in self.sim_data["cmga_manip_idx_grad"]],
+                        name="cmga_manip_idx_grad_{}".format(idx),
+                        line=dict(color=color_palette[idx % len(color_palette)]),
+                    )
+                )
             fig.show()
 
         # CMGs theta
