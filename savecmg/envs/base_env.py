@@ -51,6 +51,7 @@ class Environment:
         sc_rate_ref=[0, 0, 0],
         aoc_gains=[1, 10],
         time_step=0.5,
+        cmga_symbolic_functions=False,
     ):
 
         self.cmgs_availability = cmgs_availability
@@ -61,7 +62,11 @@ class Environment:
         self.sc_body = SpacecraftBody(sc_quat_init, sc_rate_init, sc_inertia)
 
         # initialize CMGA
-        self.cmga = ControlMomentGyroAssembly(np.deg2rad(cmgs_beta), cmgs_availability)
+        self.cmga = ControlMomentGyroAssembly(
+            cmgs_beta=np.deg2rad(cmgs_beta),
+            cmgs_availability=cmgs_availability,
+            use_symbolic_functions=cmga_symbolic_functions,
+        )
         self.cmga.initialize_cmgs_array(
             cmgs_momenta=cmgs_momenta, cmgs_theta_dot_max=cmgs_theta_dot_max
         )
