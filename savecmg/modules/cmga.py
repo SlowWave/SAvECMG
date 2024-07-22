@@ -384,6 +384,10 @@ class ControlMomentGyroAssembly:
             else:
                 epsilon = 0.0001
                 delta_manip_idx = - (manip_idx_1 ** 1/7 - manip_idx_0 ** 1/7)
+                
+                cmgs_theta_0 = np.where(cmgs_theta_0 == None, 0., cmgs_theta_0)
+                cmgs_theta_1 = np.where(cmgs_theta_1 == None, 0., cmgs_theta_1)
+
                 delta_theta = np.array(
                     [
                         abs(cmgs_theta_1[0] - cmgs_theta_0[0]) + epsilon,
