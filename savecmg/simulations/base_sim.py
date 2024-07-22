@@ -35,6 +35,7 @@ aoc_control_torque, cmga_jacobian, cmga_manip_idx, cmga_manip_idx_grad = sim_env
     sc_rate_ref=sc_rate_ref,
     aoc_gains=aoc_gains,
     time_step=time_step,
+    cmga_symbolic_functions=True,
 )
 
 # define steering algorithm parameters
