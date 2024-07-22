@@ -33,6 +33,7 @@ class Environment:
             "cmga_torque": list(),
             "cmga_jacobian": list(),
             "cmga_manip_idx": list(),
+            "cmga_manip_idx_grad": list(),
             "cmgs_theta": list(),
             "cmgs_theta_dot": list(),
         }
@@ -42,14 +43,14 @@ class Environment:
         cmgs_availability=[False, True, True, True],
         cmgs_beta=[0, 0, 45, 90],
         cmgs_momenta=[10, 10, 10, 10],
+        cmgs_theta_dot_max=[1.5, 1.5, 1.5, 1.5],
         sc_quat_init=[1, 0, 0, 0],
         sc_rate_init=[0, 0, 0],
+        sc_moi=500,
         sc_quat_ref=[0, 0, 0, 1],
         sc_rate_ref=[0, 0, 0],
-        sc_moi=500,
-        time_step=0.5,
-        cmgs_theta_dot_max=[1.5, 1.5, 1.5, 1.5],
         aoc_gains=[1, 10],
+        time_step=0.5,
     ):
 
         self.cmgs_availability = cmgs_availability
@@ -86,10 +87,11 @@ class Environment:
         self.sim_data["cmga_torque"].append(cmga_states["torque"])
         self.sim_data["cmga_jacobian"].append(cmga_states["jacobian"])
         self.sim_data["cmga_manip_idx"].append(cmga_states["manip_idx"])
+        self.sim_data["cmga_manip_idx_grad"].append(cmga_states["manip_idx_gradient"])
         self.sim_data["cmgs_theta"].append(cmga_states["cmgs_theta"])
         self.sim_data["cmgs_theta_dot"].append(cmga_states["cmgs_theta_dot"])
 
-        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"]
+        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"], cmga_states["manip_idx_gradient"]
 
         return observation
 
@@ -120,10 +122,11 @@ class Environment:
         self.sim_data["cmga_torque"].append(cmga_states["torque"])
         self.sim_data["cmga_jacobian"].append(cmga_states["jacobian"])
         self.sim_data["cmga_manip_idx"].append(cmga_states["manip_idx"])
+        self.sim_data["cmga_manip_idx_grad"].append(cmga_states["manip_idx_gradient"])
         self.sim_data["cmgs_theta"].append(cmga_states["cmgs_theta"])
         self.sim_data["cmgs_theta_dot"].append(cmga_states["cmgs_theta_dot"])
 
-        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"]
+        observation = control_torque, cmga_states["jacobian"], cmga_states["manip_idx"], cmga_states["manip_idx_gradient"]
 
         return observation
 
@@ -134,6 +137,7 @@ class Environment:
         plot_cmga_torque=True,
         plot_cmga_angular_momentum=True,
         plot_cmga_manip_idx=True,
+        plot_cmga_manip_idx_gradient=True,
         plot_cmgs_theta=True,
         plot_cmgs_theta_dot=True,
     ):
@@ -234,6 +238,23 @@ class Environment:
                 )
             fig.show()
 
+        # CMGA angular momentum
+        if plot_cmga_angular_momentum:
+            fig = go.Figure()
+            fig.update_layout(
+                title="CMGA angular momentum", xaxis_title="time [s]", yaxis_title="angular_momentum [Nms]"
+            )
+            for idx in range(3):
+                fig.add_trace(
+                    go.Scatter(
+                        x=self.sim_data["time"],
+                        y=[row[idx] for row in self.sim_data["cmga_angular_momentum"]],
+                        name="angular_momentum_{}".format(idx),
+                        line=dict(color=color_palette[idx % len(color_palette)]),
+                    )
+                )
+            fig.show()
+
         # CMGA manip_idx
         if plot_cmga_manip_idx:
             fig = go.Figure()
@@ -248,6 +269,23 @@ class Environment:
                     line=dict(color=color_palette[0]),
                 )
             )
+            fig.show()
+            
+        # CMGA manip_idx_gradinent
+        if plot_cmga_manip_idx_gradient:
+            fig = go.Figure()
+            fig.update_layout(
+                title="CMGA manip_idx_gradient", xaxis_title="time [s]", yaxis_title="manip_idx_gradient"
+            )
+            for idx in range(4):
+                fig.add_trace(
+                    go.Scatter(
+                        x=self.sim_data["time"],
+                        y=[row[idx] for row in self.sim_data["cmga_manip_idx_grad"]],
+                        name="cmga_manip_idx_grad_{}".format(idx),
+                        line=dict(color=color_palette[idx % len(color_palette)]),
+                    )
+                )
             fig.show()
 
         # CMGs theta
