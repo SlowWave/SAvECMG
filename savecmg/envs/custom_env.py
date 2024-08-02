@@ -10,7 +10,6 @@ from modules.cmga import ControlMomentGyroAssembly
 from modules.sc_body import SpacecraftBody
 from modules.aoc import AttitudeController
 
-
 class Environment:
     def __init__(self):
 
