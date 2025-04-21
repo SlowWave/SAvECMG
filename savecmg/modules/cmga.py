@@ -204,7 +204,7 @@ class ControlMomentGyroAssembly:
             CMGA Torque in S/C body frame [Nm].
         """
 
-        if not cmgs_theta_dot:
+        if cmgs_theta_dot is None:
             cmgs_theta_dot = self.cmgs_theta_dot
 
         # remove useless CMGs theta_dot based on CMGs availability
@@ -231,7 +231,7 @@ class ControlMomentGyroAssembly:
 
         else:
 
-            if not cmgs_theta:
+            if cmgs_theta is None:
                 cmgs_theta = self.cmgs_theta
 
             manip_idx = self._symbolic_manip_idx_fun(
@@ -344,7 +344,7 @@ class PyramidCMGA(ControlMomentGyroAssembly):
             ndarray: CMGA angular momentum in S/C body frame [Nms].
         """
 
-        if not cmgs_theta:
+        if cmgs_theta is None:
             cmgs_theta = self.cmgs_theta
 
         # remove useless CMGs momenta based on CMGs availability
@@ -413,7 +413,7 @@ class PyramidCMGA(ControlMomentGyroAssembly):
             ndarray: The Jacobian matrix calculated based on the input angles.
         """
 
-        if not cmgs_theta:
+        if cmgs_theta is None:
             cmgs_theta = self.cmgs_theta
 
         if not symbolic:
@@ -680,7 +680,7 @@ class BoxCMGA(ControlMomentGyroAssembly):
             ndarray: CMGA angular momentum in S/C body frame [Nms].
         """
 
-        if not cmgs_theta:
+        if cmgs_theta is None:
             cmgs_theta = self.cmgs_theta
 
         # remove useless CMGs momenta based on CMGs availability
@@ -749,7 +749,7 @@ class BoxCMGA(ControlMomentGyroAssembly):
             ndarray: The Jacobian matrix calculated based on the input angles.
         """
 
-        if not cmgs_theta:
+        if cmgs_theta is None:
             cmgs_theta = self.cmgs_theta
 
         if not symbolic:
