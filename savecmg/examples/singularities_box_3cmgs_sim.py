@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import numpy as np
 
 
-# set CMGs availability
+# simulation settings
 availability = [True, True, True, False]
 cmgs_momenta = [1, 1, 1, 1]
 
