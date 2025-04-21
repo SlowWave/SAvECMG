@@ -4,7 +4,7 @@ import sys
 # add parent directory to "sys.path" to import modules from that path
 sys.path.append(os.path.normpath(os.path.dirname(__file__) + os.sep + os.pardir))
 
-from modules.cmga import ControlMomentGyro
+from modules.cmg import ControlMomentGyro
 import plotly.graph_objects as go
 import numpy as np
 
